@@ -1,6 +1,6 @@
 """YOLO crop pipeline with a retry that disables the small-box invalidation rule.
 
-If a directory fails with `boxes_invalidated_after_first_large_box`, it retries
+If a directory fails with ``boxes_invalidated_after_first_large_box``, it retries
 selection for that directory only, keeping the same threshold but skipping the
 rule that invalidates all boxes after the first large one.
 """
@@ -10,42 +10,28 @@ from __future__ import annotations
 import contextlib
 import logging
 import shutil
-import sys
 from dataclasses import asdict, dataclass
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import cv2
 import pandas as pd
 from PIL import Image
 from ultralytics import YOLO
 
-SRC_ROOT = Path(__file__).resolve().parents[1]
-if str(SRC_ROOT) not in sys.path:
-    sys.path.append(str(SRC_ROOT))
-
-from path_config import (  # noqa: E402
+from fenotypizace.path_config import (
     CONFIG_PATH,
+    get_required_string,
     load_stage_config,
     resolve_config_path,
 )
-from path_config import (  # noqa: E402
-    get_required_string as get_config_string,
-)
-from path_config import (  # noqa: E402
-    resolve_project_path as resolve_shared_project_path,
-)
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-
 
 CROP_SIZE: tuple[int, int] = (75, 75)
-BB_THRESHOLD: int = 60
+BB_THRESHOLD: int = 55
 YOLO_CONF: float = 0.6
 YOLO_NAME: str = "detect"
 YOLO_MAX_DET: int = 5
@@ -86,30 +72,6 @@ class DirectoryResult:
     source_images: int
     best_name: str | None = None
     output_csv: str | None = None
-
-
-def configure_logging() -> None:
-    """Configure logging for command-line execution."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-
-configure_logging()
-
-
-def get_required_string(config: dict[str, Any], key: str, config_path: Path) -> str:
-    """Return a required non-empty string value from a TOML mapping."""
-    return get_config_string(config, key, config_path)
-
-
-def resolve_project_path(
-    project_root: Path, relative_path: str, key: str, config_path: Path
-) -> Path:
-    """Resolve a relative config value against the configured project root."""
-    return resolve_shared_project_path(project_root, relative_path, key, config_path)
 
 
 def load_crop_segments_paths(config_path: Path = CONFIG_PATH) -> CropSegmentsPaths:
@@ -178,7 +140,17 @@ def format_sequence_label(sequence_dir: Path) -> str:
 
 
 def parse_label_name(label_name: str) -> tuple[str, str]:
-    """Extract tray identifier and row-column directory from a label filename."""
+    """Extract tray identifier and row-column directory from a label filename.
+
+    Args:
+        label_name: Label filename (e.g. ``001_date_1-2.txt``).
+
+    Returns:
+        ``(tray_id, row_col_dir)`` tuple.
+
+    Raises:
+        ValueError: If the filename has fewer than 3 underscore-separated parts.
+    """
     shards = label_name.split("_")
     if len(shards) < 3:
         raise ValueError(
@@ -206,7 +178,15 @@ def create_empty_dataframe() -> pd.DataFrame:
 
 
 def create_dataframe(label_path: Path, delimiter: str = " ") -> pd.DataFrame:
-    """Build a deterministic DataFrame from YOLO label files."""
+    """Build a deterministic DataFrame from YOLO label files.
+
+    Args:
+        label_path: Directory containing ``.txt`` label files.
+        delimiter: Column delimiter used in label files.
+
+    Returns:
+        DataFrame with one row per detected bounding box.
+    """
     if not label_path.exists():
         return create_empty_dataframe()
 
@@ -300,7 +280,16 @@ def get_failure_reason(df: pd.DataFrame, threshold: int = BB_THRESHOLD) -> str:
 def find_best_bounding_box(
     df: pd.DataFrame, threshold: int = BB_THRESHOLD
 ) -> tuple[CropReference | None, pd.DataFrame, str]:
-    """Find the highest-confidence valid reference bounding box."""
+    """Find the highest-confidence valid reference bounding box.
+
+    Args:
+        df: DataFrame with ``smallBox`` column already populated.
+        threshold: Maximum side length (px) for a box to qualify.
+
+    Returns:
+        ``(reference, annotated_df, reason)`` where ``reason`` is ``"cropped"``
+        on success or a failure code otherwise.
+    """
     updated_df = df.copy()
     updated_df["best"] = 0.0
 
@@ -366,7 +355,18 @@ def prepare_cropping_img(reference_name: str, orig_data_path: Path) -> list[Path
 
 
 def create_save_path(img_path: Path, save_address: Path) -> Path:
-    """Construct the output path for a cropped image."""
+    """Construct the output path for a cropped image.
+
+    Args:
+        img_path: Source image path.
+        save_address: Root output directory.
+
+    Returns:
+        Full output path (parent directories are created).
+
+    Raises:
+        ValueError: If the filename has fewer than 3 underscore-separated parts.
+    """
     shards = img_path.name.split("_")
     if len(shards) < 3:
         raise ValueError(
@@ -381,6 +381,26 @@ def create_save_path(img_path: Path, save_address: Path) -> Path:
     return save_dir / img_path.name
 
 
+def calculate_crop_bounds(
+    center_x: int,
+    center_y: int,
+    image_width: int,
+    image_height: int,
+    crop_size: tuple[int, int] = CROP_SIZE,
+) -> tuple[int, int, int, int]:
+    """Return an in-bounds crop window, shifting it inward if the center is near an edge."""
+    crop_width, crop_height = crop_size
+    max_top_left_x = max(image_width - crop_width, 0)
+    max_top_left_y = max(image_height - crop_height, 0)
+
+    top_left_x = min(max(center_x - crop_width // 2, 0), max_top_left_x)
+    top_left_y = min(max(center_y - crop_height // 2, 0), max_top_left_y)
+    bottom_right_x = min(top_left_x + crop_width, image_width)
+    bottom_right_y = min(top_left_y + crop_height, image_height)
+
+    return top_left_x, top_left_y, bottom_right_x, bottom_right_y
+
+
 def cropping_img(
     reference: CropReference, absolute_paths: list[Path], save_address: Path
 ) -> None:
@@ -393,15 +413,24 @@ def cropping_img(
 
         center_x = int(reference.center_x * reference.image_width)
         center_y = int(reference.center_y * reference.image_height)
+        image_height, image_width = image.shape[:2]
 
-        top_left_x = max(center_x - CROP_SIZE[0] // 2, 0)
-        top_left_y = max(center_y - CROP_SIZE[1] // 2, 0)
+        if image_width < CROP_SIZE[0] or image_height < CROP_SIZE[1]:
+            logger.warning(
+                "Source image is smaller than crop size for %s: %sx%s",
+                img_path,
+                image_width,
+                image_height,
+            )
 
-        cropped_image = image[
-            top_left_y : top_left_y + CROP_SIZE[1],
-            top_left_x : top_left_x + CROP_SIZE[0],
-        ]
+        top_left_x, top_left_y, bottom_right_x, bottom_right_y = calculate_crop_bounds(
+            center_x=center_x,
+            center_y=center_y,
+            image_width=image_width,
+            image_height=image_height,
+        )
 
+        cropped_image = image[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
         output_path = create_save_path(img_path, save_address)
         cv2.imwrite(str(output_path), cropped_image)
 
@@ -500,7 +529,15 @@ def write_report(results: list[DirectoryResult], report_path: Path) -> Path:
 
 
 def crop(paths: CropSegmentsPaths, report_name: str = REPORT_FILENAME) -> Path:
-    """Run the full crop pipeline and return the path to the CSV report."""
+    """Run the full crop pipeline and return the path to the CSV report.
+
+    Args:
+        paths: Configured filesystem paths for this stage.
+        report_name: Filename for the summary CSV written to ``output_dir``.
+
+    Returns:
+        Path to the written report CSV.
+    """
     save_path = paths.output_dir / "runs"
     label_path = save_path / YOLO_NAME / "labels"
     csv_output_dir = paths.output_dir / "bounding_boxes"
@@ -546,11 +583,4 @@ def crop(paths: CropSegmentsPaths, report_name: str = REPORT_FILENAME) -> Path:
     return report_path
 
 
-def main() -> None:
-    """Entry point for the retry-without-edit crop pipeline."""
-    paths = load_crop_segments_paths()
-    crop(paths)
 
-
-if __name__ == "__main__":
-    main()

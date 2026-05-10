@@ -3,38 +3,35 @@
 from __future__ import annotations
 
 import logging
-import sys
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
-SRC_ROOT = Path(__file__).resolve().parents[1]
-if str(SRC_ROOT) not in sys.path:
-    sys.path.append(str(SRC_ROOT))
-
-from path_config import (  # noqa: E402
+from fenotypizace.path_config import (
     CONFIG_PATH,
     load_stage_config,
     resolve_config_path,
 )
-from path_config import (  # noqa: E402
+from fenotypizace.path_config import (
     get_required_string as get_config_string,
 )
-from path_config import (  # noqa: E402
+from fenotypizace.path_config import (
     resolve_project_path as resolve_shared_project_path,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 SLIDE_STEP: int = 1
 COLORS: int = 3
 IMG_SIZE: int = 75
-TIME_STEPS: tuple[int, ...] = (2,)
-DATA_RANGE: tuple[int, ...] = (8,)
+DEFAULT_TIME_STEPS: tuple[int, ...] = (2,)
+DEFAULT_DATA_RANGE: tuple[int, ...] = (8,)
 SKIP_DIRECTORIES: frozenset[str] = frozenset({"bounding_boxes", "runs"})
 
 
@@ -44,18 +41,6 @@ class TimeseriesDatasetPaths:
 
     input_dir: Path
     output_dir: Path
-
-
-def configure_logging() -> None:
-    """Configure logging for command-line execution."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-
-configure_logging()
 
 
 def get_required_string(config: dict[str, Any], key: str, config_path: Path) -> str:
@@ -132,7 +117,9 @@ def load_from_dir(data_directory: Path, crop_size: int) -> tuple[np.ndarray, lis
 
             if np_image.shape[0] < crop_size or np_image.shape[1] < crop_size:
                 np_image = previous_img
-                logger.warning("Image error, image is too small: %s", filename_occurrence)
+                logger.warning(
+                    "Image error, image is too small: %s", filename_occurrence
+                )
             else:
                 previous_img = np_image
 
@@ -168,8 +155,8 @@ def generate_samples(
 def load_data_images(
     images_path: Path,
     save_path: Path,
-    data_range: tuple[int, ...] = DATA_RANGE,
-    time_steps: tuple[int, ...] = TIME_STEPS,
+    data_range: tuple[int, ...] = DEFAULT_DATA_RANGE,
+    time_steps: tuple[int, ...] = DEFAULT_TIME_STEPS,
     img_crop_size: int = IMG_SIZE,
     slide_step: int = SLIDE_STEP,
 ) -> None:
@@ -203,24 +190,51 @@ def load_data_images(
             np.save(save_path / f"data_{img_crop_size}_{time_step}_{size}.npy", samples)
 
 
-def main() -> None:
-    """Run the time-series dataset generation stage."""
-    paths = load_timeseries_dataset_paths()
-    data_images_path, save_path, slide_step, colors, img_size = load_dataset(paths)
+def _normalize_window_values(
+    window_values: int | tuple[int, ...] | None, *, fallback: int
+) -> tuple[int, ...]:
+    """Coerce a config-driven window value into the tuple form used by helpers."""
+    if window_values is None:
+        return (fallback,)
+    if isinstance(window_values, int):
+        return (window_values,)
+    return tuple(window_values)
 
-    logger.info("Starting time-series dataset generation from %s", data_images_path)
-    logger.info("Size of the cropped images: %s with colors: %s", img_size, colors)
+
+def build_timeseries_dataset(
+    paths: TimeseriesDatasetPaths | None = None,
+    *,
+    config_path: Path = CONFIG_PATH,
+    data_range: int | tuple[int, ...] | None = None,
+    time_steps: int | tuple[int, ...] | None = None,
+    img_crop_size: int = IMG_SIZE,
+    slide_step: int = SLIDE_STEP,
+) -> TimeseriesDatasetPaths:
+    """Build the configured time-series datasets from cropped image sequences."""
+    context, _ = load_stage_config("timeseries_dataset", config_path)
+    resolved_paths = paths or load_timeseries_dataset_paths(config_path)
+    resolved_time_steps = _normalize_window_values(
+        time_steps,
+        fallback=context.time_steps,
+    )
+    resolved_data_range = _normalize_window_values(
+        data_range,
+        fallback=context.data_range,
+    )
+
+    logger.info(
+        "Starting time-series dataset generation from %s", resolved_paths.input_dir
+    )
+    logger.info("Size of the cropped images: %s with colors: %s", img_crop_size, COLORS)
 
     load_data_images(
-        images_path=data_images_path,
-        data_range=DATA_RANGE,
-        time_steps=TIME_STEPS,
-        img_crop_size=img_size,
+        images_path=resolved_paths.input_dir,
+        save_path=resolved_paths.output_dir,
+        data_range=resolved_data_range,
+        time_steps=resolved_time_steps,
+        img_crop_size=img_crop_size,
         slide_step=slide_step,
-        save_path=save_path,
     )
     logger.info("Time-series dataset generation complete")
+    return resolved_paths
 
-
-if __name__ == "__main__":
-    main()
