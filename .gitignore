@@ -17,17 +17,16 @@ data/results/*
 data/interim/*
 data/processed/*
 data/raw/*
+data/evaluation/*
 !data/results/.gitkeep
 !data/interim/.gitkeep
 !data/processed/.gitkeep
 !data/raw/.gitkeep
+!data/evaluation/.gitkeep
 
 # Models
 models/*
 !models/.gitkeep
 
-# Internal documents
-prompts/
-plans/
-todo/*
+# Internal instructions
 .github/
