@@ -1,9 +1,5 @@
 # SPROUT — AI-based Seedling emergence PRedictiOn and trait extraction Using RGB Time-series
 
-> **⚠️ Refactoring in progress.** All models are trained, all experiments are complete, and conclusions have been drawn. This repository is currently being cleaned up and restructured for publication — converting Jupyter Notebooks into a proper Python package and polishing the pipeline scripts. The science is done; the engineering is being made publishable.
-
----
-
 ## Overview
 
 SPROUT is a scalable, RGB-based phenotyping pipeline for automated crop seedling emergence monitoring. It integrates spatial segmentation, temporal deep learning, and cross-experiment validation into a modular image-analysis system that works directly on RGB time-series data.
@@ -76,8 +72,6 @@ sprout-emergence-prediction/
 ---
 
 ## About the Notebooks
-
-The Jupyter Notebooks in `notebooks/` are **not** part of the production pipeline. They serve two purposes:
 
 1. **Reproducibility record** — a step-by-step log of how every model was trained and every experiment was run, intended to accompany the paper for peer review.
 2. **Fine-tuning guide** — a hands-on starting point for anyone who wants to adapt or retrain our models on their own data (see `src_finetuning/`).
