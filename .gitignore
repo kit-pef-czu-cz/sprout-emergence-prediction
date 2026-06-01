@@ -21,7 +21,6 @@ data/raw/*
 !data/interim/.gitkeep
 !data/processed/.gitkeep
 !data/raw/.gitkeep
-data_old
 
 # Models
 models/*
@@ -31,3 +30,4 @@ models/*
 prompts/
 plans/
 todo/*
+.github/
