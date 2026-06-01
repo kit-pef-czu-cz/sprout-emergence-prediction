@@ -1,7 +1,7 @@
 [project]
 name = "sprout-emergence-prediction"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.0.0"
+description = "Emergence prediction for sprout growth library"
 
 readme = "README.md"
 
@@ -125,10 +125,20 @@ dev = [
     "uv>=0.11.8",
 ]
 
-# Setuptools < 81
-# [project.scripts]
-# sprout-emergence-prediction = "sprout_emergence_prediction:main"
+[build-system]
+requires = ["setuptools<81"]
+build-backend = "setuptools.build_meta"
 
-# [build-system]
-# requires = ["uv_build>=0.9.9,<0.10.0"]
-# build-backend = "uv_build"
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["emergence*"]
+
+[tool.ruff]
+exclude = ["data/**",
+    ".venv/**",
+    "models/**"
+]
+

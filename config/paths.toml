@@ -1,9 +1,9 @@
 # Shared project root and active project name for path-based scripts.
 [paths]
-project_root = "/home/vasakjakub/fenotypizace"
+project_root = "/home/vasakjakub/sprout-emergence-prediction"
 project_name = "nabila"
-time_steps = 2
-data_range = 8
+time_steps = 3
+data_range = 9
 
 [paths.detectron_test]
 train_images = "models/segmentation_model/annotations/train/images"
@@ -21,8 +21,7 @@ output_dir = "data/interim/segmentations"
 vis_output_dir = "data/interim/seg_vis_results"
 
 [paths.crop_segments]
-# model_weights = "models/object_detection_model/better_plants_1.1.pt"
-model_weights = "models/object_detection_model/fine_tuning/germination_detector.pt"
+model_weights = "models/object_detection_model/yolo/germination_detector.pt"
 input_dir = "data/interim/segmentations"
 output_dir = "data/interim/cropped_files"
 
@@ -31,6 +30,6 @@ input_dir = "data/interim/cropped_files"
 output_dir = "data/processed/numpy_dataset"
 
 [paths.emergence_predictions]
-model_path = "models/prediction_model/ef2_tcn_2-8_org_nab_train_relearned"
+model_path = "models/prediction_model/ef2_tcn_3-9_org_nab_relearned"
 input_dir = "data/processed/numpy_dataset"
 output_dir = "data/processed/predictions"
