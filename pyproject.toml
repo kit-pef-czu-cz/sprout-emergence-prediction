@@ -9,7 +9,7 @@ authors = [
     { name = "EaZynite", email = "jakubvk@gmail.com" }
 ]
 
-requires-python = "==3.11"
+requires-python = "==3.11.*"
 
 dependencies = [
     "absl-py==2.1.0",
