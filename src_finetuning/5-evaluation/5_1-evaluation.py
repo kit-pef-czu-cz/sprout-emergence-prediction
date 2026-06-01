@@ -17,7 +17,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 # Advanced users: edit these paths and parameters directly in this script.
-ROOT_PATH = Path("/home/vasakjakub/fenotypizace")
+ROOT_PATH = Path("sprout-emergence-prediction")
 PROJECT_NAME = "nabila"
 IMAGE_SIZE = 75
 TIME_STEP = 3

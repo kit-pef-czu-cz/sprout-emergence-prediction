@@ -15,7 +15,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 # Advanced users: edit these paths and parameters directly in this script.
-ROOT_PATH = Path("/home/vasakjakub/fenotypizace")
+ROOT_PATH = Path("sprout-emergence-prediction")
 PROJECT_NAME = "nabila"
 INPUT_DIR = ROOT_PATH / "data" / "interim" / "cropped_files" / PROJECT_NAME
 ANNOTATION_FILE = ROOT_PATH / "data" / "external" / f"{PROJECT_NAME}_annotations.xlsx"
