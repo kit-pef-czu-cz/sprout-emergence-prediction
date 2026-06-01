@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from fenotypizace import load_emergence_prediction_paths, run_emergence_predictions
-from fenotypizace.path_config import resolve_default_config_path
+from emergence import load_emergence_prediction_paths, run_emergence_predictions
+from emergence.path_config import resolve_default_config_path
 
 logging.basicConfig(
     level=logging.INFO,

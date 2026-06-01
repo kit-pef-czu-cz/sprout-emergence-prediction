@@ -1,13 +1,10 @@
-"""Pipeline runner: YOLO crop pipeline for segmented tray sequences.
-
-Thin entry point — all logic lives in ``fenotypizace.stages.cropping``.
-"""
+"""Pipeline runner: YOLO crop pipeline for segmented tray sequences."""
 
 from __future__ import annotations
 
 import logging
 
-from fenotypizace.stages.cropping import crop, load_crop_segments_paths
+from emergence.stages.cropping import crop, load_crop_segments_paths
 
 logging.basicConfig(
     level=logging.INFO,

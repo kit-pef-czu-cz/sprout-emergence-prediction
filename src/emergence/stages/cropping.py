@@ -18,7 +18,7 @@ import pandas as pd
 from PIL import Image
 from ultralytics import YOLO
 
-from fenotypizace.path_config import (
+from emergence.path_config import (
     CONFIG_PATH,
     get_required_string,
     load_stage_config,

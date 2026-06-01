@@ -10,15 +10,15 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
-from fenotypizace.path_config import (
+from emergence.path_config import (
     CONFIG_PATH,
     load_stage_config,
     resolve_config_path,
 )
-from fenotypizace.path_config import (
+from emergence.path_config import (
     get_required_string as get_config_string,
 )
-from fenotypizace.path_config import (
+from emergence.path_config import (
     resolve_project_path as resolve_shared_project_path,
 )
 
@@ -41,6 +41,15 @@ class TimeseriesDatasetPaths:
 
     input_dir: Path
     output_dir: Path
+
+
+@dataclass
+class WellImageSequence:
+    """Cropped image sequence loaded from one tray/well directory."""
+
+    images: list[np.ndarray]
+    image_names: list[str]
+    directory: Path
 
 
 def get_required_string(config: dict[str, Any], key: str, config_path: Path) -> str:
@@ -100,15 +109,16 @@ def list_box_directories(data_directory: Path) -> list[Path]:
     )
 
 
-def load_from_dir(data_directory: Path, crop_size: int) -> tuple[np.ndarray, list[str]]:
-    """Load cropped images from disk and return arrays with their file names."""
-    imgs_array: list[np.ndarray] = []
-    previous_img: np.ndarray | None = None
-    image_names: list[str] = []
+def load_from_dir(data_directory: Path, crop_size: int) -> list[WellImageSequence]:
+    """Load cropped images as independent per-well sequences."""
+    sequences: list[WellImageSequence] = []
 
     boxes = list_box_directories(data_directory)
 
     for box in tqdm(boxes, desc="Processing boxes", unit="box"):
+        imgs_array: list[np.ndarray] = []
+        image_names: list[str] = []
+        previous_img: np.ndarray | None = None
         files_ranged = sorted(box.glob("*.png"))
 
         for filename in files_ranged:
@@ -127,27 +137,49 @@ def load_from_dir(data_directory: Path, crop_size: int) -> tuple[np.ndarray, lis
                 imgs_array.append(np_image)
                 image_names.append(filename_occurrence)
 
-    images = np.array(imgs_array)
-    logger.info("Images array shape: %s", images.shape)
-    return images, image_names
+        if imgs_array:
+            sequences.append(
+                WellImageSequence(
+                    images=imgs_array,
+                    image_names=image_names,
+                    directory=box,
+                )
+            )
+
+    logger.info("Loaded %s well sequence(s)", len(sequences))
+    return sequences
 
 
 def generate_samples(
-    images: np.ndarray, step: int, time_steps: int, image_names: list[str]
+    sequences: list[WellImageSequence], step: int, time_steps: int
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Generate sliding-window samples and aligned image-name windows."""
-    img_trays: list[np.ndarray] = [images[0:time_steps]]
-    image_names_trays: list[list[str]] = [image_names[0:time_steps]]
-    total_iters = (images.shape[0] - time_steps) // step
+    """Generate sliding-window samples within each tray/well sequence."""
+    if step < 1:
+        raise ValueError("step must be a positive integer")
+    if time_steps < 1:
+        raise ValueError("time_steps must be a positive integer")
 
-    for index in tqdm(
-        range(1, images.shape[0] - time_steps, step),
+    img_trays: list[list[np.ndarray]] = []
+    image_names_trays: list[list[str]] = []
+
+    for sequence in tqdm(
+        sequences,
         desc="Generating sequence samples",
-        total=total_iters,
         unit="sequence",
     ):
-        img_trays.append(images[index : index + time_steps])
-        image_names_trays.append(image_names[index : index + time_steps])
+        sequence_length = len(sequence.images)
+        if sequence_length < time_steps:
+            logger.warning(
+                "Skipping %s: %s image(s) is fewer than %s time steps.",
+                sequence.directory,
+                sequence_length,
+                time_steps,
+            )
+            continue
+
+        for index in range(0, sequence_length - time_steps + 1, step):
+            img_trays.append(sequence.images[index : index + time_steps])
+            image_names_trays.append(sequence.image_names[index : index + time_steps])
 
     return np.array(img_trays), np.array(image_names_trays)
 
@@ -160,7 +192,7 @@ def load_data_images(
     img_crop_size: int = IMG_SIZE,
     slide_step: int = SLIDE_STEP,
 ) -> None:
-    """Load cropped image sequences and save NumPy datasets for prediction."""
+    """Load cropped image sequences and save sliding-window prediction datasets."""
     save_path.mkdir(parents=True, exist_ok=True)
 
     for time_step in time_steps:
@@ -177,9 +209,9 @@ def load_data_images(
 
             logger.info("Range size: %s", size)
 
-            raw_images, image_names = load_from_dir(images_path, img_crop_size)
+            raw_sequences = load_from_dir(images_path, img_crop_size)
             samples, image_names_trays = generate_samples(
-                raw_images, slide_step, time_step, image_names
+                raw_sequences, slide_step, time_step
             )
 
             np.save(
@@ -237,4 +269,3 @@ def build_timeseries_dataset(
     )
     logger.info("Time-series dataset generation complete")
     return resolved_paths
-

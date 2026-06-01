@@ -1,14 +1,10 @@
-"""Pipeline runner: segment plant boxes from tray images.
-
-Thin entry point — all logic lives in ``fenotypizace.stages.segmentation``.
-"""
+"""Pipeline runner: segment plant boxes from tray images."""
 
 from __future__ import annotations
 
 import logging
 
-from fenotypizace.stages.segmentation import (
-    BOX_SIZE,
+from emergence.stages.segmentation import (
     load_segment_boxes_paths,
     segment_boxes,
 )
@@ -24,7 +20,7 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     """Load config and run the segmentation stage."""
     paths = load_segment_boxes_paths()
-    segment_boxes(paths=paths, box_size=BOX_SIZE, save_vis=False)
+    segment_boxes(paths=paths, save_vis=False)
     logger.info("All done")
 
 

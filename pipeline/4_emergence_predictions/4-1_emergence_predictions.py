@@ -1,13 +1,13 @@
 """Pipeline runner: run temporal emergence predictions from stage-3 NumPy datasets.
 
-Thin entry point — all logic lives in ``fenotypizace.stages.emergence_predictions``.
+Thin entry point — all logic lives in ``emergence.stages.emergence_predictions``.
 """
 
 from __future__ import annotations
 
 import logging
 
-from fenotypizace.stages.emergence_predictions import (
+from emergence.stages.emergence_predictions import (
     load_emergence_prediction_paths,
     run_emergence_predictions,
 )

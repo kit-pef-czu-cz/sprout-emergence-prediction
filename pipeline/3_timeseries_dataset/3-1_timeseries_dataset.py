@@ -1,13 +1,13 @@
 """Pipeline runner: build time-series NumPy datasets from cropped image sequences.
 
-Thin entry point — all logic lives in ``fenotypizace.stages.timeseries_dataset``.
+Thin entry point — all logic lives in ``emergence.stages.timeseries_dataset``.
 """
 
 from __future__ import annotations
 
 import logging
 
-from fenotypizace.stages.timeseries_dataset import (
+from emergence.stages.timeseries_dataset import (
     build_timeseries_dataset,
     load_timeseries_dataset_paths,
 )

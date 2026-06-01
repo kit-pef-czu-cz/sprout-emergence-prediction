@@ -15,7 +15,7 @@ import torch
 from PIL import Image
 from tqdm import tqdm
 
-from fenotypizace.path_config import (
+from emergence.path_config import (
     CONFIG_PATH,
     get_required_string,
     load_stage_config,
@@ -366,13 +366,10 @@ def save_vis_predictions(
     cv2.imwrite(str(build_visualization_output_path(vis_save_path, name)), output_image)
 
 
-def fenotypizace(
-    paths: SegmentBoxesPaths, box_size: int, save_vis: bool = False
+def segment_boxes(
+    paths: SegmentBoxesPaths, box_size: int = BOX_SIZE, save_vis: bool = False
 ) -> None:
     """Segment growing boxes from all tray images in the input directory.
-
-    Legacy orchestrator name kept for backwards compatibility.
-    Prefer the ``segment_boxes`` alias for new code.
 
     Args:
         paths: Configured filesystem paths for this stage.
@@ -411,7 +408,3 @@ def fenotypizace(
 
         except Exception:
             logger.exception("Error with processing file: %s", img)
-
-
-# Clean public alias
-segment_boxes = fenotypizace

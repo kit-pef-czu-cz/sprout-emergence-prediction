@@ -1,4 +1,4 @@
-"""Public package exports for the fenotypizace library."""
+"""Public package exports for the emergence library."""
 
 from __future__ import annotations
 
@@ -20,17 +20,22 @@ from .stages import (
     DatasetSpec,
     DirectoryResult,
     EmergencePredictionPaths,
+    PostprocessedPredictionOutputs,
     PredictionOutputs,
+    PredictionPostprocessingPaths,
     SegmentBoxesPaths,
     TimeseriesDatasetPaths,
+    add_proxy_tolerance_columns,
+    build_first_germination_with_tolerance,
     build_timeseries_dataset,
     crop,
-    fenotypizace,
     load_crop_segments_paths,
     load_emergence_prediction_paths,
+    load_prediction_postprocessing_paths,
     load_segment_boxes_paths,
     load_timeseries_dataset_paths,
     run_emergence_predictions,
+    run_prediction_postprocessing,
     segment_boxes,
 )
 
@@ -49,7 +54,7 @@ def configure_logging(
     logging.basicConfig(level=level, format=fmt, datefmt=datefmt)
 
 
-__all__ = [
+__all__ = [  # noqa: RUF022
     # cropping
     "BB_THRESHOLD",
     # segmentation
@@ -73,7 +78,6 @@ __all__ = [
     "build_timeseries_dataset",
     "configure_logging",
     "crop",
-    "fenotypizace",
     "load_crop_segments_paths",
     "load_emergence_prediction_paths",
     "load_segment_boxes_paths",
@@ -82,4 +86,11 @@ __all__ = [
     "path_config",
     "run_emergence_predictions",
     "segment_boxes",
+    # emergence_prediction_postprocessing
+    "PostprocessedPredictionOutputs",
+    "PredictionPostprocessingPaths",
+    "add_proxy_tolerance_columns",
+    "build_first_germination_with_tolerance",
+    "load_prediction_postprocessing_paths",
+    "run_prediction_postprocessing",
 ]

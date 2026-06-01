@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from fenotypizace import (
+from emergence import (
     build_timeseries_dataset,
     crop,
     load_crop_segments_paths,
@@ -12,8 +12,8 @@ from fenotypizace import (
     load_timeseries_dataset_paths,
     segment_boxes,
 )
-from fenotypizace.path_config import resolve_default_config_path
-from fenotypizace.stages import segmentation
+from emergence.path_config import resolve_default_config_path
+from emergence.stages import segmentation
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,8 +1,8 @@
-"""Public stage exports for the fenotypizace package."""
+"""Public stage exports for the emergence package."""
 
 from __future__ import annotations
 
-from fenotypizace.stages.cropping import (
+from emergence.stages.cropping import (
     BB_THRESHOLD,
     CROP_SIZE,
     REPORT_FILENAME,
@@ -12,7 +12,15 @@ from fenotypizace.stages.cropping import (
     crop,
     load_crop_segments_paths,
 )
-from fenotypizace.stages.emergence_predictions import (
+from emergence.stages.emergence_prediction_postprocessing import (
+    PostprocessedPredictionOutputs,
+    PredictionPostprocessingPaths,
+    add_proxy_tolerance_columns,
+    build_first_germination_with_tolerance,
+    load_prediction_postprocessing_paths,
+    run_prediction_postprocessing,
+)
+from emergence.stages.emergence_predictions import (
     PREDICTION_THRESHOLD,
     DatasetSpec,
     EmergencePredictionPaths,
@@ -20,15 +28,14 @@ from fenotypizace.stages.emergence_predictions import (
     load_emergence_prediction_paths,
     run_emergence_predictions,
 )
-from fenotypizace.stages.segmentation import (
+from emergence.stages.segmentation import (
     BOX_SIZE,
     SCORE_THRESHOLD,
     SegmentBoxesPaths,
-    fenotypizace,
     load_segment_boxes_paths,
     segment_boxes,
 )
-from fenotypizace.stages.timeseries_dataset import (
+from emergence.stages.timeseries_dataset import (
     DEFAULT_DATA_RANGE,
     DEFAULT_TIME_STEPS,
     TimeseriesDatasetPaths,
@@ -36,12 +43,11 @@ from fenotypizace.stages.timeseries_dataset import (
     load_timeseries_dataset_paths,
 )
 
-__all__ = [
+__all__ = [  # noqa: RUF022
     # segmentation
     "BOX_SIZE",
     "SCORE_THRESHOLD",
     "SegmentBoxesPaths",
-    "fenotypizace",
     "load_segment_boxes_paths",
     "segment_boxes",
     # cropping
@@ -66,4 +72,11 @@ __all__ = [
     "PredictionOutputs",
     "load_emergence_prediction_paths",
     "run_emergence_predictions",
+    # emergence_prediction_postprocessing
+    "PostprocessedPredictionOutputs",
+    "PredictionPostprocessingPaths",
+    "add_proxy_tolerance_columns",
+    "build_first_germination_with_tolerance",
+    "load_prediction_postprocessing_paths",
+    "run_prediction_postprocessing",
 ]

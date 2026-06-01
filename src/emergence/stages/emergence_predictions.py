@@ -11,18 +11,18 @@ import pandas as pd
 from tcn import TCN
 from tensorflow import keras  # type: ignore
 
-from fenotypizace.path_config import (
+from emergence.path_config import (
     CONFIG_PATH,
     load_stage_config,
     resolve_config_path,
 )
-from fenotypizace.path_config import (
+from emergence.path_config import (
     get_required_int as get_config_int,
 )
-from fenotypizace.path_config import (
+from emergence.path_config import (
     get_required_string as get_config_string,
 )
-from fenotypizace.path_config import (
+from emergence.path_config import (
     resolve_project_path as resolve_shared_project_path,
 )
 

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-DEFAULT_CONFIG_ENV = "FENOTYPIZACE_CONFIG"
+DEFAULT_CONFIG_ENV = "EMERGENCE_CONFIG"
 
 
 @dataclass(frozen=True)
