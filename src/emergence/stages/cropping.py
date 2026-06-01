@@ -75,7 +75,18 @@ class DirectoryResult:
 
 
 def load_crop_segments_paths(config_path: Path = CONFIG_PATH) -> CropSegmentsPaths:
-    """Load crop-segment paths from the shared TOML configuration."""
+    """Load crop-segment paths from the shared TOML configuration.
+
+    Args:
+        config_path: Path to the TOML config file; defaults to ``CONFIG_PATH``.
+
+    Returns:
+        Populated ``CropSegmentsPaths`` dataclass.
+
+    Author:
+        Jakub Vašák
+
+    """
     context, crop_config = load_stage_config("crop_segments", config_path)
 
     return CropSegmentsPaths(
@@ -100,7 +111,18 @@ def load_crop_segments_paths(config_path: Path = CONFIG_PATH) -> CropSegmentsPat
 
 
 def load_yolo_model(model_weights: Path) -> YOLO:
-    """Load the YOLO model from the given weights file."""
+    """Load the YOLO model from the given weights file.
+
+    Args:
+        model_weights: Path to the YOLO model weights file.
+
+    Returns:
+        Loaded ``YOLO`` model instance.
+
+    Author:
+        Jakub Vašák
+
+    """
     return YOLO(str(model_weights))
 
 
@@ -111,7 +133,19 @@ def predict_imgs_single_directory(
     name: str,
     model: YOLO,
 ) -> None:
-    """Run YOLO prediction on a single directory of images."""
+    """Run YOLO prediction on a single directory of images.
+
+    Args:
+        path_to_imgs: Directory containing source images.
+        conf: Confidence threshold for detections.
+        save_path: Root project directory for saving prediction outputs.
+        name: Sub-directory name used for detection outputs.
+        model: Loaded YOLO model instance.
+
+    Author:
+        Jakub Vašák
+
+    """
     model.predict(
         source=str(path_to_imgs),
         save=True,
@@ -129,13 +163,32 @@ def predict_imgs_single_directory(
 
 
 def delete_folder(folder_path: Path) -> None:
-    """Delete a folder and its contents if it exists."""
+    """Delete a folder and its contents if it exists.
+
+    Args:
+        folder_path: Path to the folder to delete.
+
+    Author:
+        Jakub Vašák
+
+    """
     with contextlib.suppress(FileNotFoundError):
         shutil.rmtree(folder_path, ignore_errors=True)
 
 
 def format_sequence_label(sequence_dir: Path) -> str:
-    """Return a human-readable tray/box label for logging."""
+    """Return a human-readable tray/box label for logging.
+
+    Args:
+        sequence_dir: Path to the sequence directory.
+
+    Returns:
+        Human-readable label in the form ``"<parent_name> / <dir_name>"``.
+
+    Author:
+        Jakub Vašák
+
+    """
     return f"{sequence_dir.parent.name} / {sequence_dir.name}"
 
 
@@ -150,6 +203,10 @@ def parse_label_name(label_name: str) -> tuple[str, str]:
 
     Raises:
         ValueError: If the filename has fewer than 3 underscore-separated parts.
+
+    Author:
+        Jakub Vašák
+
     """
     shards = label_name.split("_")
     if len(shards) < 3:
@@ -163,7 +220,19 @@ def parse_label_name(label_name: str) -> tuple[str, str]:
 
 
 def img_size(file_name: str, orig_data_path: Path) -> tuple[int, int]:
-    """Return pixel dimensions of the source image referenced by a label file."""
+    """Return pixel dimensions of the source image referenced by a label file.
+
+    Args:
+        file_name: Label filename used to locate the corresponding image.
+        orig_data_path: Root directory containing the original tray images.
+
+    Returns:
+        ``(width, height)`` in pixels.
+
+    Author:
+        Jakub Vašák
+
+    """
     tray_id, row_col_dir = parse_label_name(file_name)
     img_file = file_name.replace(".txt", ".png")
     img_path = orig_data_path / f"Tray_{tray_id}" / row_col_dir / img_file
@@ -173,7 +242,15 @@ def img_size(file_name: str, orig_data_path: Path) -> tuple[int, int]:
 
 
 def create_empty_dataframe() -> pd.DataFrame:
-    """Return an empty YOLO label DataFrame with the expected columns."""
+    """Return an empty YOLO label DataFrame with the expected columns.
+
+    Returns:
+        Empty DataFrame with ``YOLO_COLUMNS`` column names.
+
+    Author:
+        Jakub Vašák
+
+    """
     return pd.DataFrame(columns=YOLO_COLUMNS)
 
 
@@ -186,6 +263,10 @@ def create_dataframe(label_path: Path, delimiter: str = " ") -> pd.DataFrame:
 
     Returns:
         DataFrame with one row per detected bounding box.
+
+    Author:
+        Jakub Vašák
+
     """
     if not label_path.exists():
         return create_empty_dataframe()
@@ -209,7 +290,19 @@ def create_dataframe(label_path: Path, delimiter: str = " ") -> pd.DataFrame:
 
 
 def add_size_to_dataframe(df: pd.DataFrame, orig_data_path: Path) -> pd.DataFrame:
-    """Append real image sizes and pixel-space bounding box dimensions."""
+    """Append real image sizes and pixel-space bounding box dimensions.
+
+    Args:
+        df: DataFrame with YOLO detection rows.
+        orig_data_path: Root directory containing the original tray images.
+
+    Returns:
+        Copy of ``df`` with added pixel-space dimension columns.
+
+    Author:
+        Jakub Vašák
+
+    """
     if df.empty:
         return df.copy()
 
@@ -233,7 +326,19 @@ def add_size_to_dataframe(df: pd.DataFrame, orig_data_path: Path) -> pd.DataFram
 
 
 def bb_adding_smallbox(df: pd.DataFrame, threshold: int = BB_THRESHOLD) -> pd.DataFrame:
-    """Mark boxes as small when both dimensions are <= threshold."""
+    """Mark boxes as small when both dimensions are <= threshold.
+
+    Args:
+        df: DataFrame with ``bb_width`` and ``bb_height`` columns.
+        threshold: Maximum side length (px) for a box to be considered small.
+
+    Returns:
+        Copy of ``df`` with a ``smallBox`` column added.
+
+    Author:
+        Jakub Vašák
+
+    """
     updated_df = df.copy()
     updated_df["smallBox"] = updated_df.apply(
         lambda row: (
@@ -247,7 +352,19 @@ def bb_adding_smallbox(df: pd.DataFrame, threshold: int = BB_THRESHOLD) -> pd.Da
 
 
 def bb_small_box_edit(df: pd.DataFrame) -> pd.DataFrame:
-    """Invalidate all rows after the first large box."""
+    """Invalidate all rows after the first large box.
+
+    Args:
+        df: DataFrame with ``smallBox`` column.
+
+    Returns:
+        Copy of ``df`` with ``smallBox`` set to ``"no"`` for all rows following
+        the first large box.
+
+    Author:
+        Jakub Vašák
+
+    """
     updated_df = df.copy()
     large_box_seen = False
     for row in updated_df.itertuples(index=True):
@@ -260,7 +377,19 @@ def bb_small_box_edit(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_failure_reason(df: pd.DataFrame, threshold: int = BB_THRESHOLD) -> str:
-    """Explain why no valid reference box could be selected."""
+    """Explain why no valid reference box could be selected.
+
+    Args:
+        df: DataFrame with bounding-box annotation columns.
+        threshold: Maximum side length (px) that qualifies a box as small.
+
+    Returns:
+        A short failure-reason string.
+
+    Author:
+        Jakub Vašák
+
+    """
     if df.empty:
         return "no_yolo_labels"
 
@@ -289,6 +418,10 @@ def find_best_bounding_box(
     Returns:
         ``(reference, annotated_df, reason)`` where ``reason`` is ``"cropped"``
         on success or a failure code otherwise.
+
+    Author:
+        Jakub Vašák
+
     """
     updated_df = df.copy()
     updated_df["best"] = 0.0
@@ -330,7 +463,22 @@ def select_reference(
     threshold: int = BB_THRESHOLD,
     apply_small_box_edit_rule: bool = True,
 ) -> tuple[CropReference | None, pd.DataFrame, str]:
-    """Apply selection rules and return the best crop reference, if any."""
+    """Apply selection rules and return the best crop reference, if any.
+
+    Args:
+        df: DataFrame with bounding-box detection rows.
+        threshold: Maximum side length (px) for a box to qualify.
+        apply_small_box_edit_rule: When ``True``, invalidate all boxes after the
+            first large box.
+
+    Returns:
+        ``(reference, annotated_df, reason)`` tuple as returned by
+        ``find_best_bounding_box``.
+
+    Author:
+        Jakub Vašák
+
+    """
     selected_df = bb_adding_smallbox(df, threshold)
     if apply_small_box_edit_rule:
         selected_df = bb_small_box_edit(selected_df)
@@ -338,7 +486,20 @@ def select_reference(
 
 
 def df_write(reference_name: str, df: pd.DataFrame, path_of_csv: Path) -> Path:
-    """Write bounding-box diagnostics to a per-sequence CSV file."""
+    """Write bounding-box diagnostics to a per-sequence CSV file.
+
+    Args:
+        reference_name: Label filename of the winning reference box.
+        df: DataFrame to write.
+        path_of_csv: Root directory for output CSV files.
+
+    Returns:
+        Path to the written CSV file.
+
+    Author:
+        Jakub Vašák
+
+    """
     tray_id, row_col_dir = parse_label_name(reference_name)
     output_dir = path_of_csv / tray_id
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -348,7 +509,19 @@ def df_write(reference_name: str, df: pd.DataFrame, path_of_csv: Path) -> Path:
 
 
 def prepare_cropping_img(reference_name: str, orig_data_path: Path) -> list[Path]:
-    """Return all PNG files from the sequence referenced by the winning label."""
+    """Return all PNG files from the sequence referenced by the winning label.
+
+    Args:
+        reference_name: Label filename of the winning reference box.
+        orig_data_path: Root directory containing the original tray images.
+
+    Returns:
+        Sorted list of PNG file paths in the sequence directory.
+
+    Author:
+        Jakub Vašák
+
+    """
     tray_id, row_col_dir = parse_label_name(reference_name)
     folder_path = orig_data_path / f"Tray_{tray_id}" / row_col_dir
     return sorted(path for path in folder_path.iterdir() if path.suffix == ".png")
@@ -366,6 +539,10 @@ def create_save_path(img_path: Path, save_address: Path) -> Path:
 
     Raises:
         ValueError: If the filename has fewer than 3 underscore-separated parts.
+
+    Author:
+        Jakub Vašák
+
     """
     shards = img_path.name.split("_")
     if len(shards) < 3:
@@ -388,7 +565,22 @@ def calculate_crop_bounds(
     image_height: int,
     crop_size: tuple[int, int] = CROP_SIZE,
 ) -> tuple[int, int, int, int]:
-    """Return an in-bounds crop window, shifting it inward if the center is near an edge."""
+    """Return an in-bounds crop window, shifting it inward if the center is near an edge.
+
+    Args:
+        center_x: Pixel X coordinate of the crop center.
+        center_y: Pixel Y coordinate of the crop center.
+        image_width: Full image width in pixels.
+        image_height: Full image height in pixels.
+        crop_size: Desired ``(width, height)`` of the crop window.
+
+    Returns:
+        ``(top_left_x, top_left_y, bottom_right_x, bottom_right_y)`` crop bounds.
+
+    Author:
+        Jakub Vašák
+
+    """
     crop_width, crop_height = crop_size
     max_top_left_x = max(image_width - crop_width, 0)
     max_top_left_y = max(image_height - crop_height, 0)
@@ -404,7 +596,17 @@ def calculate_crop_bounds(
 def cropping_img(
     reference: CropReference, absolute_paths: list[Path], save_address: Path
 ) -> None:
-    """Crop all images in a sequence around the selected reference box."""
+    """Crop all images in a sequence around the selected reference box.
+
+    Args:
+        reference: Reference bounding box used to determine the crop center.
+        absolute_paths: Ordered list of source image paths in the sequence.
+        save_address: Root output directory for cropped images.
+
+    Author:
+        Jakub Vašák
+
+    """
     for img_path in absolute_paths:
         image = cv2.imread(str(img_path))
         if image is None:
@@ -436,7 +638,18 @@ def cropping_img(
 
 
 def print_folders_with_images(folder: Path) -> list[Path]:
-    """Return sorted directories beneath folder that directly contain PNG files."""
+    """Return sorted directories beneath folder that directly contain PNG files.
+
+    Args:
+        folder: Root directory to search.
+
+    Returns:
+        Sorted list of directories that contain at least one PNG file.
+
+    Author:
+        Jakub Vašák
+
+    """
     directory_paths = [
         child
         for child in folder.rglob("*")
@@ -454,7 +667,23 @@ def process_directory(
     label_path: Path,
     csv_output_dir: Path,
 ) -> DirectoryResult:
-    """Process a single sequence directory and return a structured result."""
+    """Process a single sequence directory and return a structured result.
+
+    Args:
+        sequence_dir: Path to the sequence directory being processed.
+        paths: Configured filesystem paths for this stage.
+        model: Loaded YOLO model instance.
+        save_path: Root path for YOLO prediction outputs.
+        label_path: Directory where YOLO writes label files.
+        csv_output_dir: Root directory for bounding-box diagnostic CSVs.
+
+    Returns:
+        ``DirectoryResult`` describing the outcome of this sequence.
+
+    Author:
+        Jakub Vašák
+
+    """
     sequence_label = format_sequence_label(sequence_dir)
     delete_folder(save_path)
     predict_imgs_single_directory(sequence_dir, YOLO_CONF, save_path, YOLO_NAME, model)
@@ -521,7 +750,19 @@ def process_directory(
 
 
 def write_report(results: list[DirectoryResult], report_path: Path) -> Path:
-    """Write a CSV report summarising processed and skipped directories."""
+    """Write a CSV report summarising processed and skipped directories.
+
+    Args:
+        results: List of ``DirectoryResult`` objects to write.
+        report_path: Path for the output CSV file.
+
+    Returns:
+        Path to the written report CSV.
+
+    Author:
+        Jakub Vašák
+
+    """
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_df = pd.DataFrame(asdict(result) for result in results)
     report_df.to_csv(report_path, index=False)
@@ -537,6 +778,10 @@ def crop(paths: CropSegmentsPaths, report_name: str = REPORT_FILENAME) -> Path:
 
     Returns:
         Path to the written report CSV.
+
+    Author:
+        Jakub Vašák
+
     """
     save_path = paths.output_dir / "runs"
     label_path = save_path / YOLO_NAME / "labels"

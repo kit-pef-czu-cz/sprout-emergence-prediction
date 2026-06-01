@@ -24,7 +24,11 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    """Run segmentation, cropping, and dataset creation with shared config."""
+    """Run segmentation, cropping, and dataset creation with shared config.
+
+    Author:
+        Jakub Vašák
+    """
     config_path = resolve_default_config_path()
 
     segment_boxes(

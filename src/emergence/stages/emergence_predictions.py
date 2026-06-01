@@ -58,12 +58,28 @@ class DatasetSpec:
 
     @property
     def file_suffix(self) -> str:
-        """Return the shared dataset suffix used in stage-3 filenames."""
+        """Return the shared dataset suffix used in stage-3 filenames.
+
+        Returns:
+            Suffix string in the form ``"<image_size>_<time_steps>_<data_range>"``.
+
+        Author:
+            Jakub Vašák
+
+        """
         return f"{self.image_size}_{self.time_steps}_{self.data_range}"
 
     @property
     def output_suffix(self) -> str:
-        """Return the notebook-compatible suffix used in output file names."""
+        """Return the notebook-compatible suffix used in output file names.
+
+        Returns:
+            Suffix string in the form ``"<time_steps>-<data_range>"``.
+
+        Author:
+            Jakub Vašák
+
+        """
         return f"{self.time_steps}-{self.data_range}"
 
 
@@ -78,26 +94,77 @@ class PredictionOutputs:
 
 
 def get_required_string(config: dict[str, Any], key: str, config_path: Path) -> str:
-    """Return a required non-empty string value from a TOML mapping."""
+    """Return a required non-empty string value from a TOML mapping.
+
+    Args:
+        config: TOML table as a plain dict.
+        key: Key to look up in the table.
+        config_path: Config file path, used in error messages.
+
+    Returns:
+        The non-empty string value associated with ``key``.
+
+    Author:
+        Jakub Vašák
+
+    """
     return get_config_string(config, key, config_path)
 
 
 def get_required_int(config: dict[str, Any], key: str, config_path: Path) -> int:
-    """Return a required integer value from a TOML mapping."""
+    """Return a required integer value from a TOML mapping.
+
+    Args:
+        config: TOML table as a plain dict.
+        key: Key to look up in the table.
+        config_path: Config file path, used in error messages.
+
+    Returns:
+        The integer value associated with ``key``.
+
+    Author:
+        Jakub Vašák
+
+    """
     return get_config_int(config, key, config_path)
 
 
 def resolve_project_path(
     project_root: Path, relative_path: str, key: str, config_path: Path
 ) -> Path:
-    """Resolve a relative config value against the configured project root."""
+    """Resolve a relative config value against the configured project root.
+
+    Args:
+        project_root: Absolute project root directory.
+        relative_path: Path string from the TOML config.
+        key: Config key name, used in error messages.
+        config_path: Config file path, used in error messages.
+
+    Returns:
+        Absolute path built by joining ``project_root`` and ``relative_path``.
+
+    Author:
+        Jakub Vašák
+
+    """
     return resolve_shared_project_path(project_root, relative_path, key, config_path)
 
 
 def load_emergence_prediction_paths(
     config_path: Path = CONFIG_PATH,
 ) -> EmergencePredictionPaths:
-    """Load stage-4 paths from the shared TOML configuration."""
+    """Load stage-4 paths from the shared TOML configuration.
+
+    Args:
+        config_path: Path to the TOML config file; defaults to ``CONFIG_PATH``.
+
+    Returns:
+        Populated ``EmergencePredictionPaths`` dataclass.
+
+    Author:
+        Jakub Vašák
+
+    """
     context, emergence_config = load_stage_config("emergence_predictions", config_path)
 
     return EmergencePredictionPaths(
@@ -124,7 +191,19 @@ def load_emergence_prediction_paths(
 
 
 def parse_dataset_file_name(file_path: Path) -> tuple[str, int, int, int] | None:
-    """Parse one stage-3 NumPy dataset file name."""
+    """Parse one stage-3 NumPy dataset file name.
+
+    Args:
+        file_path: Path to the ``.npy`` dataset file.
+
+    Returns:
+        ``(prefix, image_size, time_steps, data_range)`` tuple, or ``None`` if
+        the filename does not match the expected pattern.
+
+    Author:
+        Jakub Vašák
+
+    """
     file_stem = file_path.stem
     for prefix in ("data", "image_names"):
         prefix_with_separator = f"{prefix}_"
@@ -156,7 +235,26 @@ def select_dataset_spec(
     data_range: int,
     default_image_size: int = DEFAULT_IMAGE_SIZE,
 ) -> DatasetSpec:
-    """Resolve the stage-3 dataset pair that matches the configured window."""
+    """Resolve the stage-3 dataset pair that matches the configured window.
+
+    Args:
+        input_dir: Directory containing ``.npy`` dataset files.
+        time_steps: Number of frames per window to match.
+        data_range: Sequence length to match.
+        default_image_size: Preferred image size when multiple matches exist.
+
+    Returns:
+        ``DatasetSpec`` for the matched dataset pair.
+
+    Raises:
+        FileNotFoundError: If no matching dataset files are found.
+        ValueError: If multiple image sizes match and none equals
+            ``default_image_size``.
+
+    Author:
+        Jakub Vašák
+
+    """
     data_candidates: dict[int, Path] = {}
     image_name_candidates: dict[int, Path] = {}
 
@@ -210,7 +308,18 @@ def select_dataset_spec(
 
 
 def load_numpy_inputs(dataset_spec: DatasetSpec) -> tuple[np.ndarray, np.ndarray]:
-    """Load the stage-3 NumPy data array and aligned image-name windows."""
+    """Load the stage-3 NumPy data array and aligned image-name windows.
+
+    Args:
+        dataset_spec: Resolved dataset specification.
+
+    Returns:
+        ``(samples, image_name_windows)`` arrays loaded from the stage-3 files.
+
+    Author:
+        Jakub Vašák
+
+    """
     samples = np.load(dataset_spec.data_path)
     image_name_windows = np.load(dataset_spec.image_names_path)
     logger.info("Loaded samples with shape %s", samples.shape)
@@ -221,7 +330,21 @@ def load_numpy_inputs(dataset_spec: DatasetSpec) -> tuple[np.ndarray, np.ndarray
 def validate_model_name_window(
     model_path: Path, *, time_steps: int, data_range: int
 ) -> None:
-    """Ensure the configured model name contains the active window values."""
+    """Ensure the configured model name contains the active window values.
+
+    Args:
+        model_path: Path to the temporal model file.
+        time_steps: Expected time steps in the model name.
+        data_range: Expected data range in the model name.
+
+    Raises:
+        ValueError: If neither the ``<time_steps>-<data_range>`` nor the
+            ``<time_steps>_<data_range>`` token appears in the model filename.
+
+    Author:
+        Jakub Vašák
+
+    """
     model_name = model_path.name
     expected_tokens = (f"{time_steps}-{data_range}", f"{time_steps}_{data_range}")
     if not any(token in model_name for token in expected_tokens):
@@ -233,7 +356,24 @@ def validate_model_name_window(
 
 
 def load_temporal_model(model_path: Path, *, time_steps: int, data_range: int) -> Any:  # noqa: ANN401
-    """Load the saved temporal model used for emergence prediction."""
+    """Load the saved temporal model used for emergence prediction.
+
+    Args:
+        model_path: Path to the saved Keras/TCN model.
+        time_steps: Expected time steps encoded in the model filename.
+        data_range: Expected data range encoded in the model filename.
+
+    Returns:
+        Loaded Keras model ready for inference.
+
+    Raises:
+        FileNotFoundError: If ``model_path`` does not exist.
+        ValueError: If the model filename does not contain the expected window token.
+
+    Author:
+        Jakub Vašák
+
+    """
     if not model_path.exists():
         raise FileNotFoundError(f"Temporal model not found: {model_path}")
 
@@ -255,14 +395,42 @@ def predict_labels(
     *,
     threshold: float = PREDICTION_THRESHOLD,
 ) -> list[int]:
-    """Predict emergence labels and threshold them into binary outputs."""
+    """Predict emergence labels and threshold them into binary outputs.
+
+    Args:
+        model: Loaded temporal model.
+        samples: NumPy array of image windows with shape
+            ``(n, time_steps, H, W, C)``.
+        threshold: Probability cut-off; predictions >= threshold become 1.
+
+    Returns:
+        Flat list of binary prediction labels (0 or 1).
+
+    Author:
+        Jakub Vašák
+
+    """
     probabilities = model.predict(samples, verbose=0)
     prediction_labels = (probabilities >= threshold).astype(np.uint8)
     return prediction_labels.reshape(-1).tolist()
 
 
 def extract_tray_and_box(box_name: str) -> tuple[int, str]:
-    """Extract tray id and box position from a stage-3 image filename."""
+    """Extract tray id and box position from a stage-3 image filename.
+
+    Args:
+        box_name: Image filename from the stage-3 dataset.
+
+    Returns:
+        ``(tray_id, box_position)`` tuple.
+
+    Raises:
+        ValueError: If the filename has fewer than 2 underscore-separated parts.
+
+    Author:
+        Jakub Vašák
+
+    """
     shards = box_name.split("_")
     if len(shards) < 2:
         raise ValueError(
@@ -276,7 +444,24 @@ def extract_tray_and_box(box_name: str) -> tuple[int, str]:
 def build_prediction_dataframe(
     class_labels: list[int], image_name_windows: np.ndarray, dataset_spec: DatasetSpec
 ) -> pd.DataFrame:
-    """Build the full predictions table matching notebook-era outputs."""
+    """Build the full predictions table matching notebook-era outputs.
+
+    Args:
+        class_labels: Binary prediction labels aligned to ``image_name_windows``.
+        image_name_windows: Array of per-window image filename sequences.
+        dataset_spec: Resolved dataset specification providing column counts.
+
+    Returns:
+        DataFrame with PREDICTIONS, BOX columns, TRAY, and BOX_POSITION columns.
+
+    Raises:
+        ValueError: If the lengths of ``class_labels`` and ``image_name_windows``
+            differ.
+
+    Author:
+        Jakub Vašák
+
+    """
     box_windows = image_name_windows.tolist()
     if len(class_labels) != len(box_windows):
         raise ValueError(
@@ -299,7 +484,19 @@ def build_prediction_dataframe(
 
 
 def build_first_germination_dataframe(predictions: pd.DataFrame) -> pd.DataFrame:
-    """Return the first positive prediction per tray and box position."""
+    """Return the first positive prediction per tray and box position.
+
+    Args:
+        predictions: Full predictions DataFrame with TRAY and BOX_POSITION columns.
+
+    Returns:
+        Subset of ``predictions`` containing only the earliest positive prediction
+        per (TRAY, BOX_POSITION) group, or an empty DataFrame if none exist.
+
+    Author:
+        Jakub Vašák
+
+    """
     positives = predictions.loc[predictions["PREDICTIONS"] == 1]
     if positives.empty:
         return predictions.iloc[0:0].copy()
@@ -318,7 +515,21 @@ def save_prediction_outputs(
     output_dir: Path,
     dataset_spec: DatasetSpec,
 ) -> PredictionOutputs:
-    """Write full and first-germination outputs as CSV and XLSX files."""
+    """Write full and first-germination outputs as CSV and XLSX files.
+
+    Args:
+        predictions: Full predictions DataFrame.
+        first_germination: First-germination DataFrame.
+        output_dir: Directory in which to write output files.
+        dataset_spec: Dataset specification providing the output filename suffix.
+
+    Returns:
+        ``PredictionOutputs`` dataclass with paths to all written files.
+
+    Author:
+        Jakub Vašák
+
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     suffix = dataset_spec.output_suffix
 
@@ -339,7 +550,19 @@ def save_prediction_outputs(
 def run_emergence_predictions(
     paths: EmergencePredictionPaths,
 ) -> tuple[DatasetSpec, PredictionOutputs]:
-    """Run the stage-4 prediction pipeline and return output paths."""
+    """Run the stage-4 prediction pipeline and return output paths.
+
+    Args:
+        paths: Configured filesystem paths for this stage.
+
+    Returns:
+        ``(DatasetSpec, PredictionOutputs)`` tuple with the resolved dataset spec
+        and paths to all written output files.
+
+    Author:
+        Jakub Vašák
+
+    """
     dataset_spec = select_dataset_spec(
         paths.input_dir,
         time_steps=paths.time_steps,

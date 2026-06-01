@@ -47,6 +47,7 @@ class PreprocessingPaths:
         annotation_file: Excel file with emergence annotations for each well.
         output_dir: Directory where generated NumPy arrays are saved.
         image_size: Expected crop width and height in pixels.
+
     """
 
     input_dir: Path
@@ -83,6 +84,10 @@ def read_annotations(annotation_path: Path) -> pd.DataFrame:
     Returns:
         Annotations with the expected first emergence PNG filename added in
         ``time_of_first_occurence_png``.
+
+    Author:
+        Jakub Vašák
+
     """
     annotations = pd.read_excel(annotation_path)
     annotations["time_of_first_occurence_png"] = (
@@ -95,7 +100,20 @@ def read_annotations(annotation_path: Path) -> pd.DataFrame:
 
 
 def filter_annotations(annotations: pd.DataFrame, use_trays: list[int]) -> pd.DataFrame:
-    """Filter annotations for selected trays while preserving sort order."""
+    """Filter annotations for selected trays while preserving sort order.
+
+    Args:
+        annotations: Emergence annotations with tray and well identifiers.
+        use_trays: Tray IDs to keep for the current dataset split.
+
+    Returns:
+        Filtered annotations sorted by tray and well, with the expected first
+        emergence PNG filename added in ``time_of_first_occurence_png``.
+
+    Author:
+        Jakub Vašák
+
+    """
     annotations = annotations.loc[annotations["tray_location"].isin(use_trays)].copy()
     annotations["time_of_first_occurence_png"] = (
         annotations["time_of_first_occurence"].astype(str)
@@ -116,6 +134,10 @@ def load_annotations(annotation_path: Path, use_trays: list[int]) -> pd.DataFram
     Returns:
         Filtered annotations sorted by tray and well, with the expected first
         emergence PNG filename added in ``time_of_first_occurence_png``.
+
+    Author:
+        Jakub Vašák
+
     """
     return filter_annotations(read_annotations(annotation_path), use_trays)
 
@@ -131,6 +153,10 @@ def index_containing_substring(
 
     Returns:
         Index of the first matching image, or ``-1`` when no image matches.
+
+    Author:
+        Jakub Vašák
+
     """
     for index, image_name in enumerate(img_list):
         if first_occurence in str(image_name):
@@ -159,6 +185,10 @@ def load_from_dir(
 
     Returns:
         Per-well sequences with images, binary labels, and optional filenames.
+
+    Author:
+        Jakub Vašák
+
     """
     sequences: list[WellImageSequence] = []
 
@@ -254,6 +284,10 @@ def generate_samples(
     Returns:
         Sliding-window image samples and last-frame labels. When ``image_names``
         is true, also returns filename arrays for test-set traceability.
+
+    Author:
+        Jakub Vašák
+
     """
     if step < 1:
         raise ValueError("step must be a positive integer")
@@ -316,6 +350,10 @@ def load_data_images(
             Defaults to 1.
         annotations_df: Optional preloaded annotations. When provided, the Excel
             file is not reread for this split.
+
+    Author:
+        Jakub Vašák
+
     """
     save_path.mkdir(parents=True, exist_ok=True)
     all_annotations = (
@@ -396,6 +434,10 @@ def load_dataset() -> tuple[
     Returns:
         Input image directory, annotation file, output directory, train tray IDs,
         validation tray IDs, test tray IDs, sliding-window stride, and image size.
+
+    Author:
+        Jakub Vašák
+
     """
     paths = DEFAULT_PREPROCESSING_PATHS
 
@@ -412,7 +454,11 @@ def load_dataset() -> tuple[
 
 
 def main() -> None:
-    """Create train, validation, and test datasets for temporal model finetuning."""
+    """Create train, validation, and test datasets for temporal model finetuning.
+
+    Author:
+        Jakub Vašák
+    """
     logging.basicConfig(
         level=logging.INFO,
         format="%(levelname)s:%(name)s:%(message)s",

@@ -16,7 +16,11 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    """Run emergence predictions with the shared config."""
+    """Run emergence predictions with the shared config.
+
+    Author:
+        Jakub Vašák
+    """
     config_path = resolve_default_config_path()
     dataset_spec, outputs = run_emergence_predictions(
         load_emergence_prediction_paths(config_path=config_path)

@@ -68,6 +68,10 @@ def natural_sort_key(value: str) -> tuple[int, ...] | tuple[str]:
 
     Returns:
         Numeric identifier parts when possible, otherwise the original string.
+
+    Author:
+        Jakub Vašák
+
     """
     try:
         return tuple(int(part) for part in value.split("-"))
@@ -92,6 +96,10 @@ def sigmoid(
 
     Returns:
         Sigmoid response for each input time point.
+
+    Author:
+        Jakub Vašák
+
     """
     return maximum_response / (1 + 10 ** ((log_ic50 - x_value) * hill_slope))
 
@@ -104,6 +112,10 @@ def is_generated_results_dataset(raw_dataset: pd.DataFrame) -> bool:
 
     Returns:
         ``True`` when the input has filename and prediction columns.
+
+    Author:
+        Jakub Vašák
+
     """
     return {
         GENERATED_RESULTS_NAME_COLUMN,
@@ -128,6 +140,10 @@ def convert_generated_results(raw_dataset: pd.DataFrame) -> pd.DataFrame:
 
     Raises:
         ValueError: If required filename or prediction values are invalid.
+
+    Author:
+        Jakub Vašák
+
     """
     dataset = raw_dataset.copy()
     parsed_names = (
@@ -198,6 +214,10 @@ def prepare_legacy_dataset(raw_dataset: pd.DataFrame) -> pd.DataFrame:
 
     Returns:
         DataFrame with tray names as columns and emergence times as rows.
+
+    Author:
+        Jakub Vašák
+
     """
     dataset = raw_dataset.copy()
     if "Unnamed: 0" in dataset.columns:
@@ -223,6 +243,10 @@ def prepare_dataset(raw_dataset: pd.DataFrame) -> tuple[pd.DataFrame, list[int]]
 
     Raises:
         ValueError: If the input dataset is empty.
+
+    Author:
+        Jakub Vašák
+
     """
     if raw_dataset.empty:
         msg = "The results dataset is empty."
@@ -262,6 +286,10 @@ def fit_sigmoid(
 
     Raises:
         ValueError: If bounds cannot be built from finite numeric values.
+
+    Author:
+        Jakub Vašák
+
     """
     if not np.isfinite(maximum_time) or not np.isfinite(response_bound):
         msg = (
@@ -280,7 +308,18 @@ def fit_sigmoid(
 
 
 def get_heatmap_columns(row_count: int) -> int:
-    """Return the tray grid width expected by the heatmap layout."""
+    """Return the tray grid width expected by the heatmap layout.
+
+    Args:
+        row_count: Number of rows in the tray matrix.
+
+    Returns:
+        Heatmap grid width to use for reshaping tray values.
+
+    Author:
+        Jakub Vašák
+
+    """
     if row_count in HEATMAP_NINE_COLUMN_ROWS:
         return 9
     return HEATMAP_DEFAULT_COLUMNS
@@ -299,6 +338,13 @@ def build_tray_counts(
     Returns:
         Counts with absolute percentage (``y%``) and cumulative percentage
         (``c%``) columns.
+
+    Raises:
+        ValueError: If the tray contains no valid emergence values.
+
+    Author:
+        Jakub Vašák
+
     """
     if number_of_plants == 0:
         msg = "Cannot build tray counts for a tray without emergence values."
@@ -339,6 +385,10 @@ def plot_tray_graph(
 
     Returns:
         Fitted sigmoid parameters as ``[EC50, slope, percent_germinated]``.
+
+    Author:
+        Jakub Vašák
+
     """
     LOGGER.info("Evaluating %s", tray)
 
@@ -421,6 +471,10 @@ def plot_all_trays(
         output_format: Matplotlib output format, such as ``png`` or ``jpg``.
         save: Whether to save the generated figure.
         show: Whether to display the figure interactively.
+
+    Author:
+        Jakub Vašák
+
     """
     fig, ax = plt.subplots(1, 1, figsize=(12, 8))
     colors = cm.nipy_spectral(np.linspace(0, 1, dataset.shape[1]))
@@ -470,6 +524,10 @@ def export_parameters(
 
     Returns:
         DataFrame containing EC50, slope, and percent germinated per tray.
+
+    Author:
+        Jakub Vašák
+
     """
     export_data = pd.DataFrame(
         parameters,
@@ -501,6 +559,10 @@ def graphs(
 
     Returns:
         DataFrame with fitted emergence parameters for each tray.
+
+    Author:
+        Jakub Vašák
+
     """
     if save or export_csv:
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -557,6 +619,10 @@ def read_results(input_csv: Path = INPUT_CSV) -> pd.DataFrame:
 
     Raises:
         FileNotFoundError: If ``input_csv`` does not exist.
+
+    Author:
+        Jakub Vašák
+
     """
     if not input_csv.is_file():
         msg = f"Input results CSV does not exist: {input_csv}"
@@ -578,7 +644,11 @@ def read_results(input_csv: Path = INPUT_CSV) -> pd.DataFrame:
 
 
 def main() -> None:
-    """Run the emergence graph evaluation with the configured paths."""
+    """Run the emergence graph evaluation with the configured paths.
+
+    Author:
+        Jakub Vašák
+    """
     logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
     dataset = read_results()
     graphs(dataset)

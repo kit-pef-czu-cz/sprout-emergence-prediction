@@ -65,7 +65,18 @@ class PostprocessedPredictionOutputs:
 def load_prediction_postprocessing_paths(
     config_path: Path = CONFIG_PATH,
 ) -> PredictionPostprocessingPaths:
-    """Load prediction post-processing paths from shared TOML configuration."""
+    """Load prediction post-processing paths from shared TOML configuration.
+
+    Args:
+        config_path: Path to the TOML config file; defaults to ``CONFIG_PATH``.
+
+    Returns:
+        Populated ``PredictionPostprocessingPaths`` dataclass.
+
+    Author:
+        Jakub Vašák
+
+    """
     context, emergence_config = load_stage_config("emergence_predictions", config_path)
     output_dir = resolve_config_path(
         context,
@@ -87,12 +98,35 @@ def load_prediction_postprocessing_paths(
 
 
 def prediction_file_suffix(time_steps: int, data_range: int) -> str:
-    """Return the output filename suffix for one model window."""
+    """Return the output filename suffix for one model window.
+
+    Args:
+        time_steps: Number of time steps in the model window.
+        data_range: Data range of the model window.
+
+    Returns:
+        Suffix string in the form ``"<time_steps>-<data_range>"``.
+
+    Author:
+        Jakub Vašák
+
+    """
     return f"{time_steps}-{data_range}"
 
 
 def input_predictions_path(paths: PredictionPostprocessingPaths) -> Path:
-    """Return the existing full-prediction CSV path for configured paths."""
+    """Return the existing full-prediction CSV path for configured paths.
+
+    Args:
+        paths: Configured post-processing paths.
+
+    Returns:
+        Path to the predictions CSV produced by stage 4.
+
+    Author:
+        Jakub Vašák
+
+    """
     suffix = prediction_file_suffix(paths.time_steps, paths.data_range)
     return paths.input_dir / f"predictions_model_{suffix}.csv"
 
@@ -100,7 +134,18 @@ def input_predictions_path(paths: PredictionPostprocessingPaths) -> Path:
 def postprocessed_prediction_output_paths(
     paths: PredictionPostprocessingPaths,
 ) -> PostprocessedPredictionOutputs:
-    """Return all post-processed output paths for configured paths."""
+    """Return all post-processed output paths for configured paths.
+
+    Args:
+        paths: Configured post-processing paths.
+
+    Returns:
+        ``PostprocessedPredictionOutputs`` dataclass with output file paths.
+
+    Author:
+        Jakub Vašák
+
+    """
     suffix = prediction_file_suffix(paths.time_steps, paths.data_range)
     return PostprocessedPredictionOutputs(
         predictions_csv=paths.output_dir
@@ -115,7 +160,19 @@ def postprocessed_prediction_output_paths(
 
 
 def validate_prediction_schema(predictions: pd.DataFrame) -> None:
-    """Validate columns and prediction values required for post-processing."""
+    """Validate columns and prediction values required for post-processing.
+
+    Args:
+        predictions: Full predictions DataFrame to validate.
+
+    Raises:
+        ValueError: If required columns are missing, predictions contain null values,
+            or prediction values are not binary.
+
+    Author:
+        Jakub Vašák
+
+    """
     missing_columns = [
         column for column in REQUIRED_PREDICTION_COLUMNS if column not in predictions
     ]
@@ -138,7 +195,21 @@ def validate_prediction_schema(predictions: pd.DataFrame) -> None:
 
 
 def get_box_columns(predictions: pd.DataFrame) -> list[str]:
-    """Return BOX columns in numeric order."""
+    """Return BOX columns in numeric order.
+
+    Args:
+        predictions: Predictions DataFrame with BOX<n> columns.
+
+    Returns:
+        List of BOX column names sorted by their numeric index.
+
+    Raises:
+        ValueError: If no BOX<n> column is found.
+
+    Author:
+        Jakub Vašák
+
+    """
     box_columns = [
         column for column in predictions.columns if BOX_COLUMN_PATTERN.fullmatch(column)
     ]
@@ -155,7 +226,19 @@ def get_box_columns(predictions: pd.DataFrame) -> list[str]:
 
 
 def collect_box_names(rows: pd.DataFrame, box_columns: list[str]) -> str:
-    """Collect unique PNG names from BOX columns, preserving row and box order."""
+    """Collect unique PNG names from BOX columns, preserving row and box order.
+
+    Args:
+        rows: Subset of the predictions DataFrame.
+        box_columns: Ordered list of BOX column names.
+
+    Returns:
+        Semicolon-separated string of unique image filenames.
+
+    Author:
+        Jakub Vašák
+
+    """
     box_names: list[str] = []
     seen_box_names: set[str] = set()
 
@@ -174,7 +257,18 @@ def collect_box_names(rows: pd.DataFrame, box_columns: list[str]) -> str:
 
 
 def add_proxy_tolerance_columns(predictions: pd.DataFrame) -> pd.DataFrame:
-    """Add directional proxy tolerance columns around the first positive row."""
+    """Add directional proxy tolerance columns around the first positive row.
+
+    Args:
+        predictions: Full predictions DataFrame.
+
+    Returns:
+        Copy of ``predictions`` with four tolerance columns added.
+
+    Author:
+        Jakub Vašák
+
+    """
     validate_prediction_schema(predictions)
     box_columns = get_box_columns(predictions)
     enriched = predictions.copy()
@@ -223,6 +317,7 @@ def add_proxy_tolerance_columns(predictions: pd.DataFrame) -> pd.DataFrame:
 
 
 def _validate_tolerance_columns(predictions: pd.DataFrame) -> None:
+    """Raise ValueError if any tolerance column is absent from the DataFrame."""
     missing_columns = [
         column for column in TOLERANCE_COLUMNS if column not in predictions
     ]
@@ -236,7 +331,19 @@ def _validate_tolerance_columns(predictions: pd.DataFrame) -> None:
 def build_first_germination_with_tolerance(
     predictions_with_tolerance: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Return first positive prediction per tray and box with tolerance columns."""
+    """Return first positive prediction per tray and box with tolerance columns.
+
+    Args:
+        predictions_with_tolerance: Predictions DataFrame with tolerance columns.
+
+    Returns:
+        Subset of ``predictions_with_tolerance`` containing the earliest positive
+        prediction per (TRAY, BOX_POSITION) group, or an empty DataFrame if none.
+
+    Author:
+        Jakub Vašák
+
+    """
     validate_prediction_schema(predictions_with_tolerance)
     _validate_tolerance_columns(predictions_with_tolerance)
     positives = predictions_with_tolerance.loc[
@@ -254,7 +361,21 @@ def build_first_germination_with_tolerance(
 
 
 def load_prediction_csv(predictions_csv: Path) -> pd.DataFrame:
-    """Load the existing full-prediction CSV."""
+    """Load the existing full-prediction CSV.
+
+    Args:
+        predictions_csv: Path to the predictions CSV file.
+
+    Returns:
+        Loaded predictions DataFrame.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+
+    Author:
+        Jakub Vašák
+
+    """
     if not predictions_csv.is_file():
         raise FileNotFoundError(f"Prediction CSV not found: {predictions_csv}")
     return pd.read_csv(predictions_csv)
@@ -265,7 +386,20 @@ def save_postprocessed_prediction_outputs(
     first_germination_with_tolerance: pd.DataFrame,
     paths: PredictionPostprocessingPaths,
 ) -> PostprocessedPredictionOutputs:
-    """Write post-processed prediction outputs as CSV and XLSX files."""
+    """Write post-processed prediction outputs as CSV and XLSX files.
+
+    Args:
+        predictions_with_tolerance: Post-processed predictions DataFrame.
+        first_germination_with_tolerance: First-germination DataFrame with tolerance.
+        paths: Configured post-processing paths.
+
+    Returns:
+        ``PostprocessedPredictionOutputs`` dataclass with paths to written files.
+
+    Author:
+        Jakub Vašák
+
+    """
     paths.output_dir.mkdir(parents=True, exist_ok=True)
     outputs = postprocessed_prediction_output_paths(paths)
     predictions_with_tolerance.to_csv(outputs.predictions_csv, index=False)
@@ -284,7 +418,18 @@ def save_postprocessed_prediction_outputs(
 def run_prediction_postprocessing(
     paths: PredictionPostprocessingPaths,
 ) -> PostprocessedPredictionOutputs:
-    """Run prediction post-processing and return output paths."""
+    """Run prediction post-processing and return output paths.
+
+    Args:
+        paths: Configured post-processing paths.
+
+    Returns:
+        ``PostprocessedPredictionOutputs`` dataclass with paths to all written files.
+
+    Author:
+        Jakub Vašák
+
+    """
     predictions_csv = input_predictions_path(paths)
     logger.info("Loading emergence predictions from %s", predictions_csv)
     predictions = load_prediction_csv(predictions_csv)

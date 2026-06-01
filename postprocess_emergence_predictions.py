@@ -19,7 +19,11 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    """Post-process emergence predictions with the shared config."""
+    """Post-process emergence predictions with the shared config.
+
+    Author:
+        Jakub Vašák
+    """
     config_path = resolve_default_config_path()
     outputs = run_prediction_postprocessing(
         load_prediction_postprocessing_paths(config_path=config_path)

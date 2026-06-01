@@ -50,6 +50,15 @@ def configure_logging(
     Call this once at the application entry point (e.g. main.py or a CLI
     script). Library code should never call this — only
     ``logger = logging.getLogger(__name__)`` belongs in library modules.
+
+    Args:
+        level: Logging level (default: ``logging.INFO``).
+        fmt: Log message format string.
+        datefmt: Date format string for log timestamps.
+
+    Author:
+        Jakub Vašák
+
     """
     logging.basicConfig(level=level, format=fmt, datefmt=datefmt)
 

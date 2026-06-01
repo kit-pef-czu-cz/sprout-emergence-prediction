@@ -64,7 +64,18 @@ class SegmentBoxesPaths:
 
 
 def load_segment_boxes_paths(config_path: Path = CONFIG_PATH) -> SegmentBoxesPaths:
-    """Load segmentation script paths from the shared TOML config."""
+    """Load segmentation script paths from the shared TOML config.
+
+    Args:
+        config_path: Path to the TOML config file; defaults to ``CONFIG_PATH``.
+
+    Returns:
+        Populated ``SegmentBoxesPaths`` dataclass.
+
+    Author:
+        Jakub Vašák
+
+    """
     context, segment_boxes_config = load_stage_config("segment_boxes", config_path)
 
     return SegmentBoxesPaths(
@@ -105,7 +116,18 @@ def load_segment_boxes_paths(config_path: Path = CONFIG_PATH) -> SegmentBoxesPat
 
 
 def load_model(paths: SegmentBoxesPaths) -> DefaultPredictor:
-    """Load the Detectron2 model with the configured dataset metadata."""
+    """Load the Detectron2 model with the configured dataset metadata.
+
+    Args:
+        paths: Filesystem paths providing the model weights and training data.
+
+    Returns:
+        A configured ``DefaultPredictor`` ready for inference.
+
+    Author:
+        Jakub Vašák
+
+    """
     register_coco_instances(
         TRAIN_DATASET_NAME,
         {},
@@ -133,6 +155,10 @@ def extract_first_numbers(filename: str) -> str:
 
     Raises:
         ValueError: If the filename does not start with a digit sequence.
+
+    Author:
+        Jakub Vašák
+
     """
     match = re.match(r"(\d{1,3})", filename)
     if not match:
@@ -152,6 +178,10 @@ def add_rows_columns(
 
     Returns:
         DataFrame with Category_x or Category_y column added.
+
+    Author:
+        Jakub Vašák
+
     """
     df = df.assign(
         Column_x_min=df.Column_x_min.astype(int),
@@ -183,7 +213,20 @@ def add_rows_columns(
 
 
 def build_box_output_dir(output_dir: Path, file_name: str, row_column: str) -> Path:
-    """Build the output directory for one segmented box image."""
+    """Build the output directory for one segmented box image.
+
+    Args:
+        output_dir: Root output directory.
+        file_name: Segmented image filename.
+        row_column: Row/column label for the sub-directory.
+
+    Returns:
+        Full output directory path for the box image.
+
+    Author:
+        Jakub Vašák
+
+    """
     return output_dir / f"Tray_{extract_first_numbers(file_name)}" / row_column
 
 
@@ -194,6 +237,10 @@ def save_images(df: pd.DataFrame, array: list[Image.Image], path: Path) -> None:
         df: DataFrame with box names and their locations.
         array: List of box images.
         path: Root path under which to create tray/location folders.
+
+    Author:
+        Jakub Vašák
+
     """
     df = df.assign(
         Box_row_column=lambda x: (
@@ -216,7 +263,15 @@ def save_images(df: pd.DataFrame, array: list[Image.Image], path: Path) -> None:
 
 
 def create_df() -> pd.DataFrame:
-    """Return an empty DataFrame for accumulating box coordinate rows."""
+    """Return an empty DataFrame for accumulating box coordinate rows.
+
+    Returns:
+        Empty DataFrame with columns for box coordinates and name.
+
+    Author:
+        Jakub Vašák
+
+    """
     return pd.DataFrame(
         columns=["Column_x_min", "Column_x_max", "Row_y_min", "Row_y_max", "name"]
     )
@@ -230,6 +285,10 @@ def create_masks(predictions: dict) -> tuple[np.ndarray, int, list[Image.Image]]
 
     Returns:
         Tuple of (masks array, instance count, empty image list).
+
+    Author:
+        Jakub Vašák
+
     """
     masks = np.asarray(predictions["instances"].pred_masks.to("cpu"))
     num_of_iter = len(masks)
@@ -245,6 +304,10 @@ def boundary_points(segmentation: tuple) -> tuple[int, int, int, int]:
 
     Returns:
         (column_min, column_max, row_min, row_max)
+
+    Author:
+        Jakub Vašák
+
     """
     column_min = int(np.min(segmentation[1]))
     column_max = int(np.max(segmentation[1]))
@@ -261,6 +324,10 @@ def load_image(image_path: Path) -> np.ndarray | None:
 
     Returns:
         Image as an ndarray, or None on read failure.
+
+    Author:
+        Jakub Vašák
+
     """
     try:
         return cv2.imread(str(image_path))
@@ -284,6 +351,10 @@ def append_row(
 
     Returns:
         Single-row DataFrame.
+
+    Author:
+        Jakub Vašák
+
     """
     return pd.DataFrame(
         {
@@ -316,6 +387,10 @@ def loop_over_masks(
 
     Returns:
         Updated (df, imgs) tuple.
+
+    Author:
+        Jakub Vašák
+
     """
     for i in range(num_of_iter):
         item_mask = masks[i]
@@ -340,7 +415,19 @@ def loop_over_masks(
 
 
 def build_visualization_output_path(vis_save_path: Path, name: str) -> Path:
-    """Build the output path for one visualization image."""
+    """Build the output path for one visualization image.
+
+    Args:
+        vis_save_path: Directory in which to write the visualization.
+        name: Image stem used as the output filename.
+
+    Returns:
+        Full output path for the PNG file.
+
+    Author:
+        Jakub Vašák
+
+    """
     return vis_save_path / f"{name}.png"
 
 
@@ -354,6 +441,10 @@ def save_vis_predictions(
         outputs: Model prediction dict.
         name: Image stem used as the output filename.
         vis_save_path: Directory in which to write the PNG.
+
+    Author:
+        Jakub Vašák
+
     """
     metadata = MetadataCatalog.get(TRAIN_DATASET_NAME)
     v = Visualizer(
@@ -375,6 +466,10 @@ def segment_boxes(
         paths: Configured filesystem paths for this stage.
         box_size: Maximum pixel distance for grouping rows and columns.
         save_vis: When True, save prediction overlay images alongside crops.
+
+    Author:
+        Jakub Vašák
+
     """
     predictor = load_model(paths)
 

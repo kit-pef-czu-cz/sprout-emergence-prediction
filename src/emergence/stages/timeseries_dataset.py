@@ -53,21 +53,59 @@ class WellImageSequence:
 
 
 def get_required_string(config: dict[str, Any], key: str, config_path: Path) -> str:
-    """Return a required non-empty string value from a TOML mapping."""
+    """Return a required non-empty string value from a TOML mapping.
+
+    Args:
+        config: TOML table as a plain dict.
+        key: Key to look up in the table.
+        config_path: Config file path, used in error messages.
+
+    Returns:
+        The non-empty string value associated with ``key``.
+
+    Author:
+        Jakub Vašák
+
+    """
     return get_config_string(config, key, config_path)
 
 
 def resolve_project_path(
     project_root: Path, relative_path: str, key: str, config_path: Path
 ) -> Path:
-    """Resolve a relative config path against the configured project root."""
+    """Resolve a relative config path against the configured project root.
+
+    Args:
+        project_root: Absolute project root directory.
+        relative_path: Path string from the TOML config.
+        key: Config key name, used in error messages.
+        config_path: Config file path, used in error messages.
+
+    Returns:
+        Absolute path built by joining ``project_root`` and ``relative_path``.
+
+    Author:
+        Jakub Vašák
+
+    """
     return resolve_shared_project_path(project_root, relative_path, key, config_path)
 
 
 def load_timeseries_dataset_paths(
     config_path: Path = CONFIG_PATH,
 ) -> TimeseriesDatasetPaths:
-    """Load time-series dataset paths from the shared TOML configuration."""
+    """Load time-series dataset paths from the shared TOML configuration.
+
+    Args:
+        config_path: Path to the TOML config file; defaults to ``CONFIG_PATH``.
+
+    Returns:
+        Populated ``TimeseriesDatasetPaths`` dataclass.
+
+    Author:
+        Jakub Vašák
+
+    """
     context, timeseries_config = load_stage_config("timeseries_dataset", config_path)
 
     return TimeseriesDatasetPaths(
@@ -87,18 +125,51 @@ def load_timeseries_dataset_paths(
 
 
 def load_dataset(paths: TimeseriesDatasetPaths) -> tuple[Path, Path, int, int, int]:
-    """Return stage-3 paths and fixed preprocessing settings."""
+    """Return stage-3 paths and fixed preprocessing settings.
+
+    Args:
+        paths: Resolved filesystem paths for this stage.
+
+    Returns:
+        Tuple of ``(input_dir, output_dir, slide_step, colors, img_size)``.
+
+    Author:
+        Jakub Vašák
+
+    """
     return paths.input_dir, paths.output_dir, SLIDE_STEP, COLORS, IMG_SIZE
 
 
 def load_image_array(image_path: Path) -> np.ndarray:
-    """Load one cropped PNG image as a NumPy array."""
+    """Load one cropped PNG image as a NumPy array.
+
+    Args:
+        image_path: Path to the image file.
+
+    Returns:
+        Image as a NumPy array.
+
+    Author:
+        Jakub Vašák
+
+    """
     with Image.open(image_path) as image:
         return np.array(image)
 
 
 def list_box_directories(data_directory: Path) -> list[Path]:
-    """Return sorted per-box directories under the cropped image root."""
+    """Return sorted per-box directories under the cropped image root.
+
+    Args:
+        data_directory: Root cropped image directory.
+
+    Returns:
+        Sorted list of per-box directories that contain image sequences.
+
+    Author:
+        Jakub Vašák
+
+    """
     folders = sorted(
         folder
         for folder in data_directory.iterdir()
@@ -110,7 +181,20 @@ def list_box_directories(data_directory: Path) -> list[Path]:
 
 
 def load_from_dir(data_directory: Path, crop_size: int) -> list[WellImageSequence]:
-    """Load cropped images as independent per-well sequences."""
+    """Load cropped images as independent per-well sequences.
+
+    Args:
+        data_directory: Root directory containing per-box image subdirectories.
+        crop_size: Minimum required pixel size; smaller images fall back to the
+            previous frame.
+
+    Returns:
+        List of ``WellImageSequence`` objects, one per box directory.
+
+    Author:
+        Jakub Vašák
+
+    """
     sequences: list[WellImageSequence] = []
 
     boxes = list_box_directories(data_directory)
@@ -153,7 +237,24 @@ def load_from_dir(data_directory: Path, crop_size: int) -> list[WellImageSequenc
 def generate_samples(
     sequences: list[WellImageSequence], step: int, time_steps: int
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Generate sliding-window samples within each tray/well sequence."""
+    """Generate sliding-window samples within each tray/well sequence.
+
+    Args:
+        sequences: List of per-well image sequences.
+        step: Stride between consecutive windows.
+        time_steps: Number of frames per window.
+
+    Returns:
+        Tuple of ``(samples, image_names)`` arrays with shape
+        ``(n_windows, time_steps, H, W, C)`` and ``(n_windows, time_steps)``.
+
+    Raises:
+        ValueError: If ``step`` or ``time_steps`` is less than 1.
+
+    Author:
+        Jakub Vašák
+
+    """
     if step < 1:
         raise ValueError("step must be a positive integer")
     if time_steps < 1:
@@ -192,7 +293,20 @@ def load_data_images(
     img_crop_size: int = IMG_SIZE,
     slide_step: int = SLIDE_STEP,
 ) -> None:
-    """Load cropped image sequences and save sliding-window prediction datasets."""
+    """Load cropped image sequences and save sliding-window prediction datasets.
+
+    Args:
+        images_path: Root directory of cropped image sequences.
+        save_path: Directory in which to write the ``.npy`` dataset files.
+        data_range: Sequence length(s) to process.
+        time_steps: Window size(s) to generate.
+        img_crop_size: Minimum image dimension required before fallback.
+        slide_step: Stride between consecutive windows.
+
+    Author:
+        Jakub Vašák
+
+    """
     save_path.mkdir(parents=True, exist_ok=True)
 
     for time_step in time_steps:
@@ -242,7 +356,23 @@ def build_timeseries_dataset(
     img_crop_size: int = IMG_SIZE,
     slide_step: int = SLIDE_STEP,
 ) -> TimeseriesDatasetPaths:
-    """Build the configured time-series datasets from cropped image sequences."""
+    """Build the configured time-series datasets from cropped image sequences.
+
+    Args:
+        paths: Resolved filesystem paths; loaded from config when ``None``.
+        config_path: Path to the TOML config file; defaults to ``CONFIG_PATH``.
+        data_range: Override for the sequence length(s) to process.
+        time_steps: Override for the window size(s) to generate.
+        img_crop_size: Minimum image dimension required before fallback.
+        slide_step: Stride between consecutive windows.
+
+    Returns:
+        Resolved ``TimeseriesDatasetPaths`` used for dataset generation.
+
+    Author:
+        Jakub Vašák
+
+    """
     context, _ = load_stage_config("timeseries_dataset", config_path)
     resolved_paths = paths or load_timeseries_dataset_paths(config_path)
     resolved_time_steps = _normalize_window_values(

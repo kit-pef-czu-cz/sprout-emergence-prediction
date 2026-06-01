@@ -31,7 +31,19 @@ def _normalize_config_path(candidate_path: str | Path) -> Path:
 
 
 def resolve_default_config_path(config_path: Path | None = None) -> Path:
-    """Resolve the config path from an explicit value, env var, or cwd default."""
+    """Resolve the config path from an explicit value, env var, or cwd default.
+
+    Args:
+        config_path: Explicit config path; takes precedence over the environment
+            variable and the default location when provided.
+
+    Returns:
+        Absolute resolved config path.
+
+    Author:
+        Jakub Vašák
+
+    """
     if config_path is not None:
         return _normalize_config_path(config_path)
 
@@ -46,7 +58,23 @@ CONFIG_PATH: Path = resolve_default_config_path()
 
 
 def get_required_string(config: dict[str, Any], key: str, config_path: Path) -> str:
-    """Return a required non-empty string value from a TOML mapping."""
+    """Return a required non-empty string value from a TOML mapping.
+
+    Args:
+        config: TOML table as a plain dict.
+        key: Key to look up in the table.
+        config_path: Config file path, used in error messages.
+
+    Returns:
+        The non-empty string value associated with ``key``.
+
+    Raises:
+        ValueError: If ``key`` is absent or its value is not a non-empty string.
+
+    Author:
+        Jakub Vašák
+
+    """
     value = config.get(key)
     if not isinstance(value, str) or not value:
         raise ValueError(f"Expected '{key}' to be a non-empty string in {config_path}.")
@@ -54,7 +82,23 @@ def get_required_string(config: dict[str, Any], key: str, config_path: Path) -> 
 
 
 def get_required_int(config: dict[str, Any], key: str, config_path: Path) -> int:
-    """Return a required integer value from a TOML mapping."""
+    """Return a required integer value from a TOML mapping.
+
+    Args:
+        config: TOML table as a plain dict.
+        key: Key to look up in the table.
+        config_path: Config file path, used in error messages.
+
+    Returns:
+        The integer value associated with ``key``.
+
+    Raises:
+        ValueError: If ``key`` is absent or its value is not an integer.
+
+    Author:
+        Jakub Vašák
+
+    """
     value = config.get(key)
     if isinstance(value, bool) or not isinstance(value, int):
         raise ValueError(f"Expected '{key}' to be an integer in {config_path}.")  # noqa: TRY004
@@ -64,7 +108,24 @@ def get_required_int(config: dict[str, Any], key: str, config_path: Path) -> int
 def resolve_project_path(
     project_root: Path, relative_path: str, key: str, config_path: Path
 ) -> Path:
-    """Resolve a relative config path against the configured project root."""
+    """Resolve a relative config path against the configured project root.
+
+    Args:
+        project_root: Absolute project root directory.
+        relative_path: Path string from the TOML config.
+        key: Config key name, used in error messages.
+        config_path: Config file path, used in error messages.
+
+    Returns:
+        Absolute path built by joining ``project_root`` and ``relative_path``.
+
+    Raises:
+        ValueError: If ``relative_path`` is absolute.
+
+    Author:
+        Jakub Vašák
+
+    """
     candidate_path = Path(relative_path)
     if candidate_path.is_absolute():
         raise ValueError(f"Expected '{key}' in {config_path} to be a relative path.")
@@ -74,7 +135,27 @@ def resolve_project_path(
 def load_stage_config(
     section_name: str, config_path: Path | None = None
 ) -> tuple[ConfigContext, dict[str, Any]]:
-    """Load shared [paths] settings and one stage-specific config section."""
+    """Load shared [paths] settings and one stage-specific config section.
+
+    Args:
+        section_name: Name of the stage section under ``[paths]`` in the TOML file.
+        config_path: Explicit config file path; resolved via environment variable or
+            cwd default when ``None``.
+
+    Returns:
+        A tuple of ``(ConfigContext, stage_settings)`` where ``stage_settings`` is a
+        plain dict of the named stage section, augmented with ``time_steps`` and
+        ``data_range`` defaults from the ``[paths]`` table.
+
+    Raises:
+        FileNotFoundError: If the resolved config file does not exist.
+        KeyError: If the ``[paths]`` or ``[paths.<section_name>]`` table is absent.
+        ValueError: If required keys are missing or have the wrong type.
+
+    Author:
+        Jakub Vašák
+
+    """
     resolved_config_path = resolve_default_config_path(config_path)
     if not resolved_config_path.is_file():
         raise FileNotFoundError(f"Config file not found: {resolved_config_path}")
@@ -128,7 +209,22 @@ def resolve_config_path(
     *,
     include_project_name: bool = False,
 ) -> Path:
-    """Resolve one config path and optionally scope it by the active project name."""
+    """Resolve one config path and optionally scope it by the active project name.
+
+    Args:
+        context: Shared config context loaded from the ``[paths]`` table.
+        relative_path: Relative path string from the stage section.
+        key: Config key name, used in error messages.
+        include_project_name: When ``True``, appends the project name as a final
+            path component.
+
+    Returns:
+        Resolved absolute path, optionally scoped by project name.
+
+    Author:
+        Jakub Vašák
+
+    """
     resolved_path = resolve_project_path(
         context.project_root,
         relative_path,

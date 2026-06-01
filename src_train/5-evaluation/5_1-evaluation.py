@@ -77,7 +77,15 @@ OUTPUT_FILE_PATH = EVALUATION_PATHS.output_csv
 
 
 def delete_and_create(temp_path: Path) -> None:
-    """Delete and recreate the temporary evaluation workspace."""
+    """Delete and recreate the temporary evaluation workspace.
+
+    Args:
+        temp_path: Directory to delete and recreate.
+
+    Author:
+        Jakub Vašák
+
+    """
     shutil.rmtree(temp_path, ignore_errors=True)
     temp_path.mkdir(parents=True, exist_ok=True)
 
@@ -90,18 +98,22 @@ def import_npy(
     save_path: Path,
     temp_csv_path: Path,
 ) -> pd.DataFrame:
-    """
-    Load NPY files, use model for predictions, save results to CSV.
+    """Load NumPy inputs, run predictions, and write evaluation CSVs.
 
     Args:
-        data_path: Path to data NPY file
-        names_path: Path to names NPY file
-        model_path: Path to model file
-        annotations_path: Path to annotations NPY file
-        save_path: Path to save CSV file
+        data_path: Path to the data NPY file with image sequences.
+        names_path: Path to the NPY file with image names.
+        model_path: Path to the saved model file.
+        annotations_path: Path to the NPY file with ground-truth annotations.
+        save_path: Directory where evaluation CSV outputs are written.
+        temp_csv_path: Path for the temporary CSV snapshot.
 
     Returns:
-        DataFrame with combined predictions
+        DataFrame with combined names, annotations, and prediction columns.
+
+    Author:
+        Jakub Vašák
+
     """
     # Load data
     new_data = np.load(data_path)
@@ -144,7 +156,18 @@ def import_npy(
 
 
 def add_loc(df: pd.DataFrame) -> pd.DataFrame:
-    """Add location column based on image names."""
+    """Add location identifiers derived from image names.
+
+    Args:
+        df: DataFrame containing the ``names`` column with image filenames.
+
+    Returns:
+        DataFrame with an added ``loc`` column.
+
+    Author:
+        Jakub Vašák
+
+    """
     df["loc"] = (
         df["names"]
         .str.split("_")
@@ -154,7 +177,18 @@ def add_loc(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_around_two(df: pd.DataFrame) -> pd.DataFrame:
-    """Add prob+-2 column based on conditions."""
+    """Add the ``prob+-2`` column based on adjacent onset rules.
+
+    Args:
+        df: DataFrame containing ``prob``, ``annot``, and ``loc`` columns.
+
+    Returns:
+        DataFrame with the ``prob+-2`` column populated.
+
+    Author:
+        Jakub Vašák
+
+    """
     df["prob+-2"] = float("nan")
     count = 0
     half = None
@@ -185,14 +219,37 @@ def add_around_two(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def reverse(df: pd.DataFrame) -> pd.DataFrame:
-    """Reverse order of DataFrame rows."""
+    """Reverse the order of DataFrame rows.
+
+    Args:
+        df: DataFrame to reverse.
+
+    Returns:
+        DataFrame with reversed row order and reset index.
+
+    Author:
+        Jakub Vašák
+
+    """
     return df.iloc[::-1].reset_index(drop=True)
 
 
 def compute_cprob(
     predictions: np.ndarray | pd.Series, window: int = CPROB_WINDOW
 ) -> np.ndarray:
-    """Smooth a binary prediction sequence without using annotations."""
+    """Smooth a binary prediction sequence without using annotations.
+
+    Args:
+        predictions: Binary prediction sequence.
+        window: Window length for enforcing stable zeros and ones.
+
+    Returns:
+        Smoothed prediction sequence.
+
+    Author:
+        Jakub Vašák
+
+    """
     cprob = np.array(predictions, dtype=int)
     prediction_count = len(cprob)
     if prediction_count < window:
@@ -216,7 +273,20 @@ def compute_cprob_tolerance(
     annotations: np.ndarray | pd.Series,
     tolerance_steps: int,
 ) -> np.ndarray:
-    """Return annotation sequence only for explicit onset-tolerance evaluation."""
+    """Apply onset-tolerance rule to predictions using annotations.
+
+    Args:
+        cprob: Cleaned prediction sequence.
+        annotations: Ground-truth annotation sequence.
+        tolerance_steps: Allowed offset between prediction and annotation onset.
+
+    Returns:
+        Prediction sequence adjusted for the onset tolerance window.
+
+    Author:
+        Jakub Vašák
+
+    """
     cprob_values = np.array(cprob, dtype=int)
     annotation_values = np.array(annotations, dtype=int)
 
@@ -237,7 +307,19 @@ def compute_cprob_tolerance(
 def compute_cprob_tol(
     cprob: np.ndarray | pd.Series, annotations: np.ndarray | pd.Series
 ) -> np.ndarray:
-    """Compute cprob+-1 using the canonical analyze.py tolerance rule."""
+    """Compute ``cprob+-1`` using the canonical tolerance rule.
+
+    Args:
+        cprob: Cleaned prediction sequence.
+        annotations: Ground-truth annotation sequence.
+
+    Returns:
+        Prediction sequence adjusted with a one-step tolerance.
+
+    Author:
+        Jakub Vašák
+
+    """
     return compute_cprob_tolerance(cprob, annotations, tolerance_steps=1)
 
 
@@ -245,7 +327,19 @@ def classify_box(
     predictions: np.ndarray | pd.Series,
     annotations: np.ndarray | pd.Series,
 ) -> str:
-    """Classify one location by first-emergence prediction semantics."""
+    """Classify one location by first-emergence prediction semantics.
+
+    Args:
+        predictions: Prediction sequence for a single location.
+        annotations: Ground-truth annotation sequence for the location.
+
+    Returns:
+        Confusion category for the location (``TP``, ``TN``, ``FP``, or ``FN``).
+
+    Author:
+        Jakub Vašák
+
+    """
     prediction_values = np.array(predictions, dtype=int)
     annotation_values = np.array(annotations, dtype=int)
     has_annotation = np.any(annotation_values == 1)
@@ -265,7 +359,19 @@ def classify_box(
 def apply_prediction_only_cprob(
     df: pd.DataFrame, window: int = CPROB_WINDOW
 ) -> pd.DataFrame:
-    """Add cprob columns per location while preserving row order."""
+    """Add cleaned prediction columns per location while preserving row order.
+
+    Args:
+        df: DataFrame with ``prob``, ``annot``, and ``loc`` columns.
+        window: Window length for ``cprob`` smoothing.
+
+    Returns:
+        DataFrame with ``cprob``, ``cprob+-1``, and ``cprob+-2`` columns.
+
+    Author:
+        Jakub Vašák
+
+    """
     result_df = df.copy()
     result_df["cprob"] = result_df["prob"].astype(int)
     result_df["cprob+-1"] = result_df["cprob"]
@@ -294,7 +400,18 @@ def apply_prediction_only_cprob(
 
 
 def cleaning_part1(df: pd.DataFrame) -> pd.DataFrame:
-    """Clean data based on annotation and location patterns."""
+    """Clean the ``prob+-2`` column based on annotation and location patterns.
+
+    Args:
+        df: DataFrame containing ``annot``, ``loc``, and ``prob`` columns.
+
+    Returns:
+        DataFrame with cleaned ``prob+-2`` values.
+
+    Author:
+        Jakub Vašák
+
+    """
     check_annot = 1
     check_name = None
     count = 1
@@ -323,7 +440,18 @@ def cleaning_part1(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_around_one(df: pd.DataFrame) -> pd.DataFrame:
-    """Add prob+-1 column based on previous conditions."""
+    """Add the ``prob+-1`` column based on previous-condition rules.
+
+    Args:
+        df: DataFrame containing ``annot``, ``loc``, and ``prob`` columns.
+
+    Returns:
+        DataFrame with ``prob+-1`` values populated.
+
+    Author:
+        Jakub Vašák
+
+    """
     df["prob+-1"] = None
     prev_annot = 0
     prev_name = None
@@ -350,7 +478,18 @@ def add_around_one(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_around_one_rev(df: pd.DataFrame) -> pd.DataFrame:
-    """Add reversed prob+-1 values."""
+    """Add reversed ``prob+-1`` values after the forward pass.
+
+    Args:
+        df: DataFrame containing ``annot``, ``loc``, and ``prob`` columns.
+
+    Returns:
+        DataFrame with reversed ``prob+-1`` values.
+
+    Author:
+        Jakub Vašák
+
+    """
     check_annot = 1
     check_name = None
     half = 1
@@ -379,31 +518,18 @@ def add_around_one_rev(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def box_count(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Counts correct and incorrect classifications for each location box in the dataset.
+    """Count correct and incorrect box-level classifications per prediction type.
 
-    Processing steps:
-    1. Initializes counters for each prediction type
-    2. Groups rows by location
-    3. Classifies each location by first-emergence semantics
-    4. Generates summary statistics for each prediction type
-
-    Comparisons (in order):
-    1. Ground truth (prob vs annot)
-    2. Prob with ±2 tolerance
-    3. Clean predictions (cprob)
-    4. Clean predictions with ±2 tolerance
-
-    Parameters:
-    -----------
-    df : pd.DataFrame
-        Must contain columns in order:
-        names,annot,prob,loc,prob+-2,cprob,prob+-1,cprob+-2,cprob+-1
+    Args:
+        df: DataFrame with columns ``names``, ``annot``, ``prob``, ``loc``,
+            ``prob+-2``, ``cprob``, ``prob+-1``, ``cprob+-2``, and ``cprob+-1``.
 
     Returns:
-    --------
-    pd.DataFrame
-        Original DataFrame with added 'box' column and printed accuracy summary
+        DataFrame with an added ``box`` column after printing the summary table.
+
+    Author:
+        Jakub Vašák
+
     """
     df["box"] = "x"
     box_rights = [0, 0, 0, 0]
@@ -455,16 +581,18 @@ def box_count(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def switch_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    This function reorders the Dataframe columns according to the desired order.
+    """Reorder evaluation columns to the desired output order.
 
     Args:
-        df: DataFrame with columns [names,annot,prob,loc,prob+-2,cprob,prob+-1,cprob+-2,cprob+-1,box]
+        df: DataFrame with prediction and annotation columns.
 
     Returns:
-        DataFrame with added and reordered columns
-    """
+        DataFrame with columns reordered for export.
 
+    Author:
+        Jakub Vašák
+
+    """
     # Změňte pořadí sloupců
     desired_columns_order = [
         "names",
@@ -481,28 +609,16 @@ def switch_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def generate_csv(df: pd.DataFrame, model_path: Path, save_path: Path) -> None:
-    """
-    Removes location column from DataFrame and saves it as CSV.
+    """Drop the location column and save evaluation results to CSV.
 
-    Processing steps:
-    1. Takes input DataFrame
-    2. Removes 'loc' column
-    3. Extracts model name from path
-    4. Saves modified DataFrame to CSV
+    Args:
+        df: DataFrame containing the ``loc`` column to remove.
+        model_path: Path to the model file used for naming the output CSV.
+        save_path: Directory where the evaluation CSV is written.
 
-    Parameters:
-    -----------
-    df : pd.DataFrame
-        Input DataFrame containing the 'loc' column to be removed
-    model_path : str
-        Path to model, used to extract model name for output file
-    model_save_path : str
-        Directory where the output CSV will be saved
+    Author:
+        Jakub Vašák
 
-    Returns:
-    --------
-    None
-        Saves modified DataFrame to CSV file named '{model_name}_test.csv'
     """
     # Extract model name from path
     model_name = model_path.name
@@ -517,17 +633,18 @@ def generate_csv(df: pd.DataFrame, model_path: Path, save_path: Path) -> None:
 
 
 def locs(input_file_path: Path) -> list[str]:
-    """
-    This function reads a CSV file from the given input file path, extracts the unique
-    values from the 'loc' column, and returns these unique values as a list.
+    """Return unique location identifiers from an evaluation CSV.
 
-    Parameters:
-        input_file_path (str): The file path of the input CSV file
+    Args:
+        input_file_path: Path to the input CSV file.
 
     Returns:
-        list: A list containing the unique strings from the 'loc' column of the CSV file
-    """
+        Unique values from the ``loc`` column.
 
+    Author:
+        Jakub Vašák
+
+    """
     df = pd.read_csv(input_file_path)
 
     unique_strings = df["loc"].unique()
@@ -535,38 +652,19 @@ def locs(input_file_path: Path) -> list[str]:
 
 
 def conf_matrix_calc(file_path: Path, loca: str, row: str) -> str:
-    """
-    Calculate confusion matrix outcome for a specific location and prediction column.
+    """Calculate confusion-matrix outcome for one location and prediction column.
 
-    Processing steps:
-    1. Read CSV file into DataFrame
-    2. Filter rows for specific location
-    3. Classify first-emergence match between annotations and predictions
+    Args:
+        file_path: Path to the CSV file containing annotations and predictions.
+        loca: Location identifier to filter rows by.
+        row: Prediction column name (``cprob``, ``cprob+-1``, or ``cprob+-2``).
 
-    Logic for outcomes:
-    - TP: germinating location with matching first positive step
-    - TN: non-germinating location with no positive predictions
-    - FP: positive prediction for NG or wrong first positive step
-    - FN: germinating location with no positive prediction
+    Returns:
+        Confusion matrix category (``TP``, ``TN``, ``FP``, or ``FN``).
 
-    Parameters
-    ----------
-    file_path : str
-        Path to CSV file containing annotations and predictions
-    loca : str
-        Location identifier to filter rows by
-    row : str
-        Name of prediction column to compare with annotations
-        Supported values: ['cprob', 'cprob+-1', 'cprob+-2']
+    Author:
+        Jakub Vašák
 
-    Returns
-    -------
-    str
-        Confusion matrix category:
-        - 'TP': True Positive
-        - 'TN': True Negative
-        - 'FP': False Positive
-        - 'FN': False Negative
     """
     # Read CSV into DataFrame
     df = pd.read_csv(file_path)
@@ -578,39 +676,18 @@ def conf_matrix_calc(file_path: Path, loca: str, row: str) -> str:
 
 
 def conf_matrix(input_file_path: Path, row: str) -> tuple[int, int, int, int]:
-    """
-    Calculate confusion matrix values for predictions in specific column.
+    """Calculate confusion matrix counts for the selected prediction column.
 
-    Processing steps:
-    1. Get list of unique locations from file
-    2. Initialize confusion matrix counters
-    3. For each location:
-       - Calculate confusion matrix outcome
-       - Update appropriate counter
-    4. Return final counts
+    Args:
+        input_file_path: Path to CSV file containing predictions and annotations.
+        row: Prediction column name (``cprob``, ``cprob+-1``, or ``cprob+-2``).
 
-    Metrics calculated:
-    - True Positives (TP): Correctly predicted positive cases
-    - True Negatives (TN): Correctly predicted negative cases
-    - False Positives (FP): Incorrectly predicted positive cases
-    - False Negatives (FN): Incorrectly predicted negative cases
+    Returns:
+        Confusion matrix values in order ``(TP, TN, FP, FN)``.
 
-    Parameters
-    ----------
-    input_file_path : str
-        Path to CSV file containing predictions and annotations
-    row : str
-        Name of column to compare with annotations column
-        Supported values: ['cprob', 'cprob+-1', 'cprob+-2']
+    Author:
+        Jakub Vašák
 
-    Returns
-    -------
-    tuple[int, int, int, int]
-        Confusion matrix values in order: (TP, TN, FP, FN)
-        - TP: Number of true positives
-        - TN: Number of true negatives
-        - FP: Number of false positives
-        - FN: Number of false negatives
     """
     # Initialize confusion matrix counters from the CSV only.
     true_positives = 0
@@ -643,35 +720,20 @@ def box_confusion(
     model_path: Path,
     save_path: Path,
 ) -> pd.DataFrame:
-    """
-    Calculate confusion matrix metrics and accuracy for different prediction types.
+    """Compute box-level confusion metrics and save them to Excel.
 
-    Processing steps:
-    1. Calculate confusion matrix values for base predictions (cprob)
-    2. Calculate confusion matrix values for ±1 tolerance (cprob+-1)
-    3. Calculate confusion matrix values for ±2 tolerance (cprob+-2)
-    4. Combine results into DataFrame
-    5. Save results to Excel file
+    Args:
+        input_file_path: Path to the input CSV file containing predictions.
+        model_path: Path to the model file used for Excel output naming.
+        save_path: Directory where the Excel results are saved.
 
-    Tasks evaluated:
-    - Base predictions (cprob)
-    - Predictions with ±1 frame tolerance (cprob+-1)
-    - Predictions with ±2 frame tolerance (cprob+-2)
+    Returns:
+        DataFrame containing confusion matrix results with columns
+        ``[BOX_CONFUSION_MATRIX, TP, TN, FP, FN, acc]``.
 
-    Parameters
-    ----------
-    input_file_path : str
-        Path to input CSV file containing predictions
-    model_path : str
-        Path to model file, used for Excel output naming
-    save_path : str
-        Directory where Excel results will be saved
+    Author:
+        Jakub Vašák
 
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing confusion matrix results with columns:
-        [BOX_CONFUSION_MATRIX, TP, TN, FP, FN, acc]
     """
     # Calculate confusion matrix for each prediction type
     TP1, TN1, FP1, FN1 = conf_matrix(input_file_path, "cprob")
@@ -712,24 +774,17 @@ def save_into_excel(
     sheet_name: str,
     df: pd.DataFrame,
 ) -> None:
-    """
-    Save DataFrame into Excel file, either creating new file or appending to existing one.
+    """Save a DataFrame into an evaluation Excel workbook.
 
-    Parameters
-    ----------
-    model_path : str
-        Path to model file, used to extract model name for output file
-    save_path : str
-        Directory where Excel file will be saved
-    sheet_name : str
-        Name of sheet where DataFrame will be saved
-    df : pd.DataFrame
-        DataFrame containing data to be saved to Excel
+    Args:
+        model_path: Path to model file used to build the Excel filename.
+        save_path: Directory where the Excel file is saved.
+        sheet_name: Name of the worksheet to write.
+        df: DataFrame containing data to save.
 
-    Returns
-    -------
-    None
-        Saves DataFrame to Excel file but does not return value
+    Author:
+        Jakub Vašák
+
     """
     # Suppress UserWarnings that can occur during Excel operations
     with warnings.catch_warnings():
@@ -765,39 +820,23 @@ def evaluation_numb(
     incorrect_predictions: float,
     task_name: str,
 ) -> pd.DataFrame:
-    """
-    Create and format a DataFrame containing evaluation metrics from confusion matrix values.
+    """Create a formatted DataFrame with evaluation metrics.
 
-    Processing steps:
-    1. Takes confusion matrix values and overall counts
-    2. Creates dictionary with metrics
-    3. Builds DataFrame with metrics as index
-    4. Transposes DataFrame for better readability
-    5. Prints task name and formatted metrics
-
-    Parameters:
-    -----------
-    TP : float
-        Number of true positives
-    TN : float
-        Number of true negatives
-    FP : float
-        Number of false positives
-    FN : float
-        Number of false negatives
-    TRUE : float
-        Total number of correct predictions
-    FALSE : float
-        Total number of incorrect predictions
-    task_name : str
-        Name of the evaluation task
+    Args:
+        true_positives: Number of true positives.
+        true_negatives: Number of true negatives.
+        false_positives: Number of false positives.
+        false_negatives: Number of false negatives.
+        correct_predictions: Total number of correct predictions.
+        incorrect_predictions: Total number of incorrect predictions.
+        task_name: Name of the evaluation task.
 
     Returns:
-    --------
-    pd.DataFrame
-        Transposed DataFrame containing evaluation metrics and accuracy
-        Columns: [TP, TN, FP, FN, True, False, Accuracy]
-        Single row with actual values
+        Transposed DataFrame containing metrics and accuracy.
+
+    Author:
+        Jakub Vašák
+
     """
     # Create data dictionary with metrics
     data = {
@@ -831,33 +870,19 @@ def eva(
     save_path: Path,
     output_file_path: Path,
 ) -> None:
-    """
-    Calculates confusion matrix metrics and accuracy for predictions.
+    """Calculate confusion-matrix metrics and save them to Excel.
 
-    Processing steps:
-    1. Extracts truth values and predictions
-    2. Calculates true/false predictions
-    3. Computes confusion matrix values (TP, TN, FP, FN)
-    4. Generates evaluation metrics
-    5. Saves results to Excel
+    Args:
+        df: DataFrame containing annotations and predictions.
+        model_path: Path to model used for Excel output naming.
+        task_name: Name of the evaluation task for the Excel sheet.
+        task: Prediction column name to evaluate.
+        save_path: Directory where Excel results will be saved.
+        output_file_path: Path where the evaluated CSV is written.
 
-    Parameters:
-    -----------
-    df : pd.DataFrame
-        DataFrame containing annotations and predictions
-    model_path : str
-        Path to model, used for Excel output
-    task_name : str
-        Name of evaluation task for Excel sheet
-    task : str
-        Column name containing predictions to evaluate
-    save_path : str
-        Directory where Excel results will be saved
+    Author:
+        Jakub Vašák
 
-    Returns:
-    --------
-    None
-        Saves evaluation metrics to Excel file
     """
     # Initialize confusion matrix counters
     true_predictions = false_predictions = 0
@@ -915,41 +940,22 @@ def eva_calc(
     input_file_path: Path,
     output_file_path: Path,
 ) -> pd.DataFrame:
-    """
-    Calculate and save multiple evaluation metrics for different prediction types.
+    """Calculate evaluation metrics for multiple prediction types.
 
-    Processing steps:
-    1. Evaluates ground truth predictions
-    2. Evaluates predictions with ±1 tolerance
-    3. Evaluates predictions with ±2 tolerance
-    4. Evaluates cleaned predictions
-    5. Evaluates cleaned predictions with ±1 tolerance
-    6. Evaluates cleaned predictions with ±2 tolerance
-    7. Generates box confusion matrix
-
-    Evaluation tasks:
-    - ground truth: raw model predictions
-    - accuracy ±1: predictions with one frame tolerance
-    - accuracy ±2: predictions with two frame tolerance
-    - accuracy after clean: cleaned predictions
-    - accuracy after clean ±1: cleaned predictions with one frame tolerance
-    - accuracy after clean ±2: cleaned predictions with two frame tolerance
-
-    Parameters:
-    -----------
-    df : pd.DataFrame
-        DataFrame containing predictions and annotations
-        Required columns: [names, annot, prob, prob+-1, prob+-2, cprob, cprob+-1, cprob+-2]
-    model_path : str
-        Path to model file
-    save_path : str
-        Directory where results will be saved
+    Args:
+        df: DataFrame containing predictions and annotations.
+        model_path: Path to the model file.
+        save_path: Directory where results are saved.
+        input_file_path: Path to the CSV used for box-level metrics.
+        output_file_path: Path to the evaluated CSV output.
 
     Returns:
-    --------
-    pd.DataFrame
-        Box confusion matrix results DataFrame with columns:
-        [BOX_CONFUSION_MATRIX, TP, TN, FP, FN, acc]
+        Box confusion matrix results with columns
+        ``[BOX_CONFUSION_MATRIX, TP, TN, FP, FN, acc]``.
+
+    Author:
+        Jakub Vašák
+
     """
     # Define evaluation tasks
     evaluation_tasks = [
@@ -989,45 +995,21 @@ def evaluation(
     input_file_path: Path = INPUT_FILE_PATH,
     output_file_path: Path = OUTPUT_FILE_PATH,
 ) -> None:
-    """
-    Run complete evaluation pipeline for a model on test data.
+    """Run the full evaluation pipeline on the configured test data.
 
-    Processing steps:
-    1. Create clean workspace by deleting and recreating temp directory
-    2. Import and process test data:
-       - Load test images
-       - Load annotations
-       - Load image names
-       - Make model predictions
-    3. Calculate evaluation metrics:
-       - Confusion matrix values
-       - Accuracy scores
-       - Box-level metrics
-    4. Save results to files
+    Args:
+        data_path: Path to the NPY file containing test images.
+        model_path: Path to the saved model file to evaluate.
+        names_path: Path to the NPY file containing image names.
+        annotations_path: Path to the NPY file containing ground-truth labels.
+        save_path: Directory where evaluation outputs are written.
+        temp_path: Temporary workspace directory.
+        input_file_path: Path to the temporary CSV for box-level metrics.
+        output_file_path: Path to the evaluated CSV output.
 
-    Parameters
-    ----------
-    data_path : str
-        Path to NPY file containing test images
-    model_path : str
-        Path to saved model file to evaluate
-    names_path : str
-        Path to NPY file containing image names
-    annotations_path : str
-        Path to NPY file containing ground truth annotations
+    Author:
+        Jakub Vašák
 
-    Returns
-    -------
-    None
-        Results are saved to files:
-        - CSV files with predictions
-        - Excel files with evaluation metrics
-
-    Error handling
-    -------------
-    - Checks if all input files exist
-    - Validates input data formats
-    - Creates output directories if missing
     """
     # Setup clean workspace
     delete_and_create(temp_path)
@@ -1048,13 +1030,14 @@ def evaluation(
 
 
 def set_paths() -> tuple[Path, Path, Path]:
-    """
-    Set global paths for data, models, and results.
+    """Return configured paths for models, NumPy datasets, and outputs.
 
     Returns:
-    --------
-        tuple[str, str, str]
-            Tuple containing paths for data, models, numpy datasets, and save locations
+        Tuple of ``(model_dir, numpy_dataset_dir, output_dir)`` paths.
+
+    Author:
+        Jakub Vašák
+
     """
     return (
         EVALUATION_PATHS.model_dir,
@@ -1064,7 +1047,18 @@ def set_paths() -> tuple[Path, Path, Path]:
 
 
 def format_model_name(paths: EvaluationPaths) -> str:
-    """Create the configured model name for the selected evaluation parameters."""
+    """Create the configured model name for the selected evaluation parameters.
+
+    Args:
+        paths: Evaluation path settings and naming parameters.
+
+    Returns:
+        Formatted model filename for the current configuration.
+
+    Author:
+        Jakub Vašák
+
+    """
     return paths.model_name_template.format(
         project_name=paths.project_name,
         image_size=paths.image_size,
@@ -1075,7 +1069,18 @@ def format_model_name(paths: EvaluationPaths) -> str:
 
 
 def format_dataset_prefix(paths: EvaluationPaths) -> str:
-    """Create the NumPy dataset prefix generated by stage 3 preprocessing."""
+    """Create the NumPy dataset prefix generated by stage 3 preprocessing.
+
+    Args:
+        paths: Evaluation path settings and naming parameters.
+
+    Returns:
+        Dataset filename prefix for the configured split.
+
+    Author:
+        Jakub Vašák
+
+    """
     return (
         f"data_{paths.project_name}_{paths.image_size}_{paths.time_step}_"
         f"{paths.data_range}_{paths.dataset_split}"
@@ -1083,6 +1088,11 @@ def format_dataset_prefix(paths: EvaluationPaths) -> str:
 
 
 def main() -> None:
+    """Run evaluation with the configured model and dataset paths.
+
+    Author:
+        Jakub Vašák
+    """
     model_save_path, numpy_datasets, save_path = set_paths()
     paths = EVALUATION_PATHS
     dataset_prefix = format_dataset_prefix(paths)
